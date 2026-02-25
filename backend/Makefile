@@ -1,4 +1,4 @@
-.PHONY: run build test migrate-up migrate-down migrate-create seed
+.PHONY: run build test migrate-up migrate-down migrate-create seed reset-activities
 
 # Database URL for local development
 DB_URL ?= postgres://postgres:postgres@localhost:5432/velometric?sslmode=disable
@@ -42,3 +42,7 @@ migrate-version:
 # Force migration version (usage: make migrate-force version=1)
 migrate-force:
 	migrate -path migrations -database "$(DB_URL)" force $(version)
+
+# Reset activity data (keeps users and zones)
+reset-activities:
+	docker-compose -f ../docker-compose.yml exec -T db psql -U postgres -d velometric -f - < scripts/reset-activities.sql

@@ -44,25 +44,17 @@ class ApiClient {
     const formData = new FormData();
     formData.append("file", file);
 
-    const url = `${this.baseUrl}/api/activities`;
-    console.log("Uploading to:", url);
-    console.log("File:", file.name, file.size);
-
-    const response = await fetch(url, {
+    const response = await fetch(`${this.baseUrl}/api/activities`, {
       method: "POST",
       body: formData,
     });
-
-    console.log("Response status:", response.status);
 
     if (!response.ok) {
       const error: ApiError = await response.json();
       throw new Error(error.error || "Upload failed");
     }
 
-    const result = await response.json();
-    console.log("Upload result:", result);
-    return result;
+    return response.json();
   }
 
   async getActivities(): Promise<Activity[]> {
