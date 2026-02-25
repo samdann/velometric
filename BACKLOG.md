@@ -6,6 +6,7 @@
 
 ## Improvements
 <!-- Format: - [ ] Brief description | Context/requirements -->
+- [ ] Support FIT files from multiple sources | Garmin Connect (ZIP), Strava, Wahoo may have different formats/fields
 
 
 ## Tech Debt

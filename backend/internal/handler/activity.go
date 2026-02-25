@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -72,31 +73,39 @@ func (h *Handler) GetActivity(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateActivity(w http.ResponseWriter, r *http.Request) {
+	log.Println("CreateActivity: starting")
+
 	if !h.HasDB() {
+		log.Println("CreateActivity: no database")
 		writeError(w, http.StatusServiceUnavailable, "Database not available")
 		return
 	}
 
 	// Parse multipart form (max 32MB)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		writeError(w, http.StatusBadRequest, "Failed to parse form")
+		log.Printf("CreateActivity: form parse error: %v", err)
+		writeError(w, http.StatusBadRequest, "Failed to parse form: "+err.Error())
 		return
 	}
 
 	// Get the FIT file
-	file, _, err := r.FormFile("file")
+	file, header, err := r.FormFile("file")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "No file provided")
+		log.Printf("CreateActivity: no file: %v", err)
+		writeError(w, http.StatusBadRequest, "No file provided: "+err.Error())
 		return
 	}
 	defer file.Close()
+	log.Printf("CreateActivity: received file %s (%d bytes)", header.Filename, header.Size)
 
 	// Parse the FIT file
 	parsed, err := fitparser.Parse(file)
 	if err != nil {
+		log.Printf("CreateActivity: FIT parse error: %v", err)
 		writeError(w, http.StatusBadRequest, "Failed to parse FIT file: "+err.Error())
 		return
 	}
+	log.Printf("CreateActivity: parsed %d records, %d laps", len(parsed.Records), len(parsed.Laps))
 
 	// TODO: Get user ID and FTP from auth context
 	userID, err := getDemoUserID(r.Context(), h.db)

@@ -1,16 +1,42 @@
 package fitparser
 
 import (
+	"archive/zip"
+	"bytes"
 	"fmt"
 	"io"
 	"math"
+	"strings"
 
 	"github.com/tormoder/fit"
 )
 
-// Parse reads a FIT file and extracts activity data
+// Parse reads a FIT file (or ZIP containing FIT) and extracts activity data
 func Parse(r io.Reader) (*ParsedActivity, error) {
-	fitFile, err := fit.Decode(r)
+	// Read entire file into memory
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	if len(data) < 14 {
+		return nil, fmt.Errorf("file too small (%d bytes)", len(data))
+	}
+
+	// Check if it's a ZIP file (starts with PK)
+	if len(data) >= 2 && data[0] == 'P' && data[1] == 'K' {
+		data, err = extractFITFromZIP(data)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Verify FIT file signature (bytes 8-11 should be ".FIT")
+	if len(data) >= 12 && string(data[8:12]) != ".FIT" {
+		return nil, fmt.Errorf("invalid FIT file signature")
+	}
+
+	fitFile, err := fit.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode FIT file: %w", err)
 	}
@@ -181,4 +207,30 @@ func Parse(r io.Reader) (*ParsedActivity, error) {
 	}
 
 	return parsed, nil
+}
+
+// extractFITFromZIP extracts the first .fit file from a ZIP archive
+func extractFITFromZIP(data []byte) ([]byte, error) {
+	zipReader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read ZIP file: %w", err)
+	}
+
+	for _, file := range zipReader.File {
+		if strings.HasSuffix(strings.ToLower(file.Name), ".fit") {
+			rc, err := file.Open()
+			if err != nil {
+				return nil, fmt.Errorf("failed to open FIT file in ZIP: %w", err)
+			}
+			defer rc.Close()
+
+			fitData, err := io.ReadAll(rc)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read FIT file from ZIP: %w", err)
+			}
+			return fitData, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no .fit file found in ZIP archive")
 }
