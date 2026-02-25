@@ -10,6 +10,26 @@ type ParsedActivity struct {
 	Records   []Record
 	Laps      []Lap
 	Events    []Event
+
+	// Session-level summary data (pre-computed by device)
+	TotalDistance       *float64 // meters
+	TotalTimerTime      *float64 // seconds (moving time)
+	TotalElapsedTime    *float64 // seconds (total time)
+	TotalAscent         *float64 // meters
+	TotalDescent        *float64 // meters
+	AvgPower            *int     // watts
+	MaxPower            *int     // watts
+	NormalizedPower     *int     // watts
+	AvgHeartRate        *int     // bpm
+	MaxHeartRate        *int     // bpm
+	AvgCadence          *int     // rpm
+	MaxCadence          *int     // rpm
+	AvgSpeed            *float64 // m/s
+	MaxSpeed            *float64 // m/s
+	TotalCalories       *int
+	AvgTemperature      *float64 // Celsius
+	TrainingStressScore *float64
+	IntensityFactor     *float64
 }
 
 // Record represents a single data point in the activity

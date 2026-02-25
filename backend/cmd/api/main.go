@@ -62,6 +62,7 @@ func main() {
 		r.Get("/activities/{id}", h.GetActivity)
 		r.Get("/activities/{id}/records", h.GetActivityRecords)
 		r.Get("/activities/{id}/power-curve", h.GetPowerCurve)
+		r.Get("/activities/{id}/laps", h.GetLaps)
 	})
 
 	// Server setup

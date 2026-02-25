@@ -4,7 +4,14 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { PageHeader } from "@/components/layout";
 import { ActivityTabs } from "@/components/activity/activity-tabs";
+import { PowerTab } from "@/components/activity/power-tab";
+import { HeartRateTab } from "@/components/activity/heart-rate-tab";
+import { MapTab } from "@/components/activity/map-tab";
+import { SegmentsTab } from "@/components/activity/segments-tab";
+import { LapsTab } from "@/components/activity/laps-tab";
+import { DataTab } from "@/components/activity/data-tab";
 import { api, Activity } from "@/lib/api";
+import { ActivityTab } from "@/types/activity";
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -64,6 +71,7 @@ export default function ActivityDetailPage() {
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<ActivityTab>("overview");
 
   useEffect(() => {
     async function fetchActivity() {
@@ -104,9 +112,10 @@ export default function ActivityDetailPage() {
         description={formatDate(activity.startTime)}
       />
       <div className="p-6">
-        <ActivityTabs activityId={id} />
+        <ActivityTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-        {/* Summary Stats */}
+        {/* Tab Content */}
+        {activeTab === "overview" && (
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           <StatCard
             label="Duration"
@@ -188,6 +197,31 @@ export default function ActivityDetailPage() {
             />
           )}
         </div>
+        )}
+
+        {activeTab === "power" && (
+          <PowerTab activityId={id} activity={activity} />
+        )}
+
+        {activeTab === "heart-rate" && (
+          <HeartRateTab activity={activity} />
+        )}
+
+        {activeTab === "map" && (
+          <MapTab activityId={id} />
+        )}
+
+        {activeTab === "segments" && (
+          <SegmentsTab />
+        )}
+
+        {activeTab === "laps" && (
+          <LapsTab activityId={id} />
+        )}
+
+        {activeTab === "data" && (
+          <DataTab activityId={id} />
+        )}
       </div>
     </div>
   );

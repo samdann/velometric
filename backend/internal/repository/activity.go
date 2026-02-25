@@ -254,6 +254,36 @@ func (r *ActivityRepository) GetRecords(ctx context.Context, activityID uuid.UUI
 	return records, nil
 }
 
+// GetLaps retrieves all laps for an activity
+func (r *ActivityRepository) GetLaps(ctx context.Context, activityID uuid.UUID) ([]model.ActivityLap, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, activity_id, lap_number, start_time, duration, distance,
+			avg_power, max_power, normalized_power, avg_hr, max_hr,
+			avg_cadence, avg_speed, max_speed, ascent, descent, trigger
+		FROM activity_laps
+		WHERE activity_id = $1
+		ORDER BY lap_number ASC
+	`, activityID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get laps: %w", err)
+	}
+	defer rows.Close()
+
+	var laps []model.ActivityLap
+	for rows.Next() {
+		var l model.ActivityLap
+		if err := rows.Scan(
+			&l.ID, &l.ActivityID, &l.LapNumber, &l.StartTime, &l.Duration, &l.Distance,
+			&l.AvgPower, &l.MaxPower, &l.NormalizedPower, &l.AvgHR, &l.MaxHR,
+			&l.AvgCadence, &l.AvgSpeed, &l.MaxSpeed, &l.Ascent, &l.Descent, &l.Trigger,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan lap: %w", err)
+		}
+		laps = append(laps, l)
+	}
+	return laps, nil
+}
+
 // GetPowerCurve retrieves the power curve for an activity
 func (r *ActivityRepository) GetPowerCurve(ctx context.Context, activityID uuid.UUID) ([]model.PowerCurvePoint, error) {
 	rows, err := r.pool.Query(ctx, `

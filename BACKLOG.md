@@ -2,11 +2,12 @@
 
 ## Bugs
 <!-- Format: - [ ] Brief description | Details/reproduction steps -->
+- [x] in UI, clicking on tabs other than overview does not display new data. overview data seems persistant
 
 
 ## Improvements
 <!-- Format: - [ ] Brief description | Context/requirements -->
-- [ ] Support FIT files from multiple sources | Garmin Connect (ZIP), Strava, Wahoo may have different formats/fields
+- [ ] Create a primary key on uploaded ride so that duplicates are not possible (main field should not be the same). propose a combination
 
 
 ## Tech Debt

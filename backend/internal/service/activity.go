@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -51,47 +52,116 @@ func (s *ActivityService) ProcessFITFile(ctx context.Context, userID uuid.UUID, 
 		}
 	}
 
-	// Compute duration from records
+	// Use session-level values when available, otherwise compute from records
 	var duration int
-	if len(parsed.Records) >= 2 {
+	if parsed.TotalTimerTime != nil {
+		duration = int(*parsed.TotalTimerTime)
+	} else if len(parsed.Records) >= 2 {
 		duration = int(parsed.Records[len(parsed.Records)-1].Timestamp.Sub(parsed.Records[0].Timestamp).Seconds())
 	}
 
-	// Get final distance
+	// Get distance from session or last record
 	var distance float64
-	for i := len(parsed.Records) - 1; i >= 0; i-- {
-		if parsed.Records[i].Distance != nil {
-			distance = *parsed.Records[i].Distance
-			break
+	if parsed.TotalDistance != nil {
+		distance = *parsed.TotalDistance
+	} else {
+		for i := len(parsed.Records) - 1; i >= 0; i-- {
+			if parsed.Records[i].Distance != nil {
+				distance = *parsed.Records[i].Distance
+				break
+			}
 		}
 	}
 
-	// Compute metrics
-	avgPower := ComputeAverage(powers)
-	maxPower := ComputeMax(powers)
-	normalizedPower := ComputeNormalizedPower(powers)
+	// Use session-level metrics when available, otherwise compute
+	var avgPower, maxPower, normalizedPower int
+	if parsed.AvgPower != nil {
+		avgPower = *parsed.AvgPower
+	} else {
+		avgPower = ComputeAverage(powers)
+	}
+	if parsed.MaxPower != nil {
+		maxPower = *parsed.MaxPower
+	} else {
+		maxPower = ComputeMax(powers)
+	}
+	if parsed.NormalizedPower != nil {
+		normalizedPower = *parsed.NormalizedPower
+	} else {
+		normalizedPower = ComputeNormalizedPower(powers)
+	}
 
-	avgHR := ComputeAverage(heartRates)
-	maxHR := ComputeMax(heartRates)
+	var avgHR, maxHR int
+	if parsed.AvgHeartRate != nil {
+		avgHR = *parsed.AvgHeartRate
+	} else {
+		avgHR = ComputeAverage(heartRates)
+	}
+	if parsed.MaxHeartRate != nil {
+		maxHR = *parsed.MaxHeartRate
+	} else {
+		maxHR = ComputeMax(heartRates)
+	}
 
-	avgCadence := ComputeAverage(cadences)
-	maxCadence := ComputeMax(cadences)
+	var avgCadence, maxCadence int
+	if parsed.AvgCadence != nil {
+		avgCadence = *parsed.AvgCadence
+	} else {
+		avgCadence = ComputeAverage(cadences)
+	}
+	if parsed.MaxCadence != nil {
+		maxCadence = *parsed.MaxCadence
+	} else {
+		maxCadence = ComputeMax(cadences)
+	}
 
-	avgSpeed := ComputeAverageFloat(speeds)
-	maxSpeed := ComputeMaxFloat(speeds)
+	var avgSpeed, maxSpeed float64
+	if parsed.AvgSpeed != nil {
+		avgSpeed = *parsed.AvgSpeed
+	} else {
+		avgSpeed = ComputeAverageFloat(speeds)
+	}
+	if parsed.MaxSpeed != nil {
+		maxSpeed = *parsed.MaxSpeed
+	} else {
+		maxSpeed = ComputeMaxFloat(speeds)
+	}
 
-	elevationGain := ComputeElevationGain(altitudes)
-	avgTemp := ComputeAverageFloat(temperatures)
+	var elevationGain float64
+	if parsed.TotalAscent != nil {
+		elevationGain = *parsed.TotalAscent
+	} else {
+		elevationGain = ComputeElevationGain(altitudes)
+	}
 
-	// Compute derived metrics
+	var avgTemp float64
+	if parsed.AvgTemperature != nil {
+		avgTemp = *parsed.AvgTemperature
+	} else {
+		avgTemp = ComputeAverageFloat(temperatures)
+	}
+
+	// Use session-level derived metrics when available, otherwise compute
 	var tss, intensityFactor, variabilityIndex float64
-	if ftp > 0 && normalizedPower > 0 {
+	if parsed.TrainingStressScore != nil {
+		tss = *parsed.TrainingStressScore
+	} else if ftp > 0 && normalizedPower > 0 {
 		tss = ComputeTSS(duration, normalizedPower, ftp)
+	}
+	if parsed.IntensityFactor != nil {
+		intensityFactor = *parsed.IntensityFactor
+	} else if ftp > 0 && normalizedPower > 0 {
 		intensityFactor = ComputeIntensityFactor(normalizedPower, ftp)
 	}
 	if avgPower > 0 && normalizedPower > 0 {
 		variabilityIndex = ComputeVariabilityIndex(normalizedPower, avgPower)
 	}
+
+	// Debug logging for session values
+	log.Printf("ProcessFITFile: Session values - Elevation: %.0f, AvgPower: %d, NP: %d, IF: %.3f, TSS: %.1f",
+		elevationGain, avgPower, normalizedPower, intensityFactor, tss)
+	log.Printf("ProcessFITFile: Session sources - TotalAscent: %v, AvgPower: %v, NP: %v, IF: %v",
+		parsed.TotalAscent != nil, parsed.AvgPower != nil, parsed.NormalizedPower != nil, parsed.IntensityFactor != nil)
 
 	// Generate activity name if not provided
 	name := parsed.Name
@@ -277,6 +347,11 @@ func (s *ActivityService) GetActivityRecords(ctx context.Context, activityID uui
 // GetPowerCurve retrieves the power curve for an activity
 func (s *ActivityService) GetPowerCurve(ctx context.Context, activityID uuid.UUID) ([]model.PowerCurvePoint, error) {
 	return s.repo.GetPowerCurve(ctx, activityID)
+}
+
+// GetLaps retrieves all laps for an activity
+func (s *ActivityService) GetLaps(ctx context.Context, activityID uuid.UUID) ([]model.ActivityLap, error) {
+	return s.repo.GetLaps(ctx, activityID)
 }
 
 func generateActivityName(sport string, startTime time.Time) string {

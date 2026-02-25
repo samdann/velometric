@@ -53,11 +53,85 @@ func Parse(r io.Reader) (*ParsedActivity, error) {
 		Events:  make([]Event, 0, len(activity.Events)),
 	}
 
-	// Get activity name and start time from session
+	// Get activity name, start time, and summary data from session
 	if len(activity.Sessions) > 0 {
 		session := activity.Sessions[0]
 		parsed.StartTime = session.StartTime
 		parsed.Sport = session.Sport.String()
+
+		// Extract session-level summary metrics
+		if session.GetTotalDistanceScaled() != math.MaxFloat64 {
+			dist := session.GetTotalDistanceScaled()
+			parsed.TotalDistance = &dist
+		}
+		if session.GetTotalTimerTimeScaled() != math.MaxFloat64 {
+			timerTime := session.GetTotalTimerTimeScaled()
+			parsed.TotalTimerTime = &timerTime
+		}
+		if session.GetTotalElapsedTimeScaled() != math.MaxFloat64 {
+			elapsedTime := session.GetTotalElapsedTimeScaled()
+			parsed.TotalElapsedTime = &elapsedTime
+		}
+		if session.TotalAscent != 0xFFFF {
+			ascent := float64(session.TotalAscent)
+			parsed.TotalAscent = &ascent
+		}
+		if session.TotalDescent != 0xFFFF {
+			descent := float64(session.TotalDescent)
+			parsed.TotalDescent = &descent
+		}
+		if session.AvgPower != 0xFFFF {
+			avgPower := int(session.AvgPower)
+			parsed.AvgPower = &avgPower
+		}
+		if session.MaxPower != 0xFFFF {
+			maxPower := int(session.MaxPower)
+			parsed.MaxPower = &maxPower
+		}
+		if session.NormalizedPower != 0xFFFF {
+			np := int(session.NormalizedPower)
+			parsed.NormalizedPower = &np
+		}
+		if session.AvgHeartRate != 0xFF {
+			avgHR := int(session.AvgHeartRate)
+			parsed.AvgHeartRate = &avgHR
+		}
+		if session.MaxHeartRate != 0xFF {
+			maxHR := int(session.MaxHeartRate)
+			parsed.MaxHeartRate = &maxHR
+		}
+		if session.AvgCadence != 0xFF {
+			avgCad := int(session.AvgCadence)
+			parsed.AvgCadence = &avgCad
+		}
+		if session.MaxCadence != 0xFF {
+			maxCad := int(session.MaxCadence)
+			parsed.MaxCadence = &maxCad
+		}
+		if session.GetAvgSpeedScaled() != math.MaxFloat64 {
+			avgSpeed := session.GetAvgSpeedScaled()
+			parsed.AvgSpeed = &avgSpeed
+		}
+		if session.GetMaxSpeedScaled() != math.MaxFloat64 {
+			maxSpeed := session.GetMaxSpeedScaled()
+			parsed.MaxSpeed = &maxSpeed
+		}
+		if session.TotalCalories != 0xFFFF {
+			calories := int(session.TotalCalories)
+			parsed.TotalCalories = &calories
+		}
+		if session.AvgTemperature != 0x7F {
+			temp := float64(session.AvgTemperature)
+			parsed.AvgTemperature = &temp
+		}
+		if session.TrainingStressScore != 0xFFFF {
+			tss := float64(session.TrainingStressScore) / 10.0 // Scaled by 10 in FIT
+			parsed.TrainingStressScore = &tss
+		}
+		if session.IntensityFactor != 0xFFFF {
+			ifactor := float64(session.IntensityFactor) / 1000.0 // Scaled by 1000 in FIT
+			parsed.IntensityFactor = &ifactor
+		}
 	}
 
 	// Parse records

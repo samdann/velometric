@@ -174,6 +174,29 @@ func (h *Handler) GetPowerCurve(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, curve)
 }
 
+// GetLaps returns the laps for an activity
+func (h *Handler) GetLaps(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid activity ID")
+		return
+	}
+
+	if !h.HasDB() {
+		writeError(w, http.StatusServiceUnavailable, "Database not available")
+		return
+	}
+
+	laps, err := h.activityService.GetLaps(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get laps")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, laps)
+}
+
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
