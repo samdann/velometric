@@ -11,8 +11,8 @@ type Config struct {
 
 func Load() *Config {
 	return &Config{
-		Port:        getEnv("PORT", "8080"),
-		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
+		Port:        getEnv("PORT", "8081"),
+		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3001"),
 		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/velometric?sslmode=disable"),
 		RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379"),
 	}

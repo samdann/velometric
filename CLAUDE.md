@@ -21,10 +21,10 @@ velometric/
 
 ```bash
 # Frontend (from frontend/)
-npm run dev          # http://localhost:3000
+npm run dev -- -p 3001   # http://localhost:3001
 
 # Backend (from backend/)
-go run cmd/api/main.go   # http://localhost:8080
+go run cmd/api/main.go   # http://localhost:8081
 
 # Full stack (from root)
 docker-compose up
