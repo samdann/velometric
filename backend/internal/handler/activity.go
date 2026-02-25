@@ -18,18 +18,18 @@ type Activity struct {
 	AverageHR     *int    `json:"averageHeartRate,omitempty"`
 }
 
-func ListActivities(w http.ResponseWriter, r *http.Request) {
-	// Placeholder - will be replaced with database query
+func (h *Handler) ListActivities(w http.ResponseWriter, r *http.Request) {
+	// TODO: Fetch from database when repository is implemented
 	activities := []Activity{}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(activities)
 }
 
-func GetActivity(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetActivity(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	// Placeholder - will be replaced with database query
+	// TODO: Fetch from database when repository is implemented
 	activity := Activity{
 		ID:   id,
 		Name: "Placeholder Activity",
@@ -39,8 +39,8 @@ func GetActivity(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(activity)
 }
 
-func CreateActivity(w http.ResponseWriter, r *http.Request) {
-	// Placeholder - will handle FIT file upload
+func (h *Handler) CreateActivity(w http.ResponseWriter, r *http.Request) {
+	// TODO: Handle FIT file upload
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{

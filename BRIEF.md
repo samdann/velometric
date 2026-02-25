@@ -78,10 +78,10 @@ Created with: TypeScript, Tailwind, App Router, src dir, ESLint
 - CORS config for Next.js frontend
 - Environment config (.env)
 
-### Step 4 — Database schema & migrations
-- PostgreSQL + TimescaleDB setup
+### Step 4 ✅ — Database schema & migrations
+- PostgreSQL + TimescaleDB setup (via docker-compose)
 - Migration tool (golang-migrate)
-- Initial migration with schema above
+- Initial migration with full schema
 - Seed script for development
 
 ### Step 5 — FIT file upload flow
