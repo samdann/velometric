@@ -60,6 +60,8 @@ func main() {
 		r.Get("/activities", h.ListActivities)
 		r.Post("/activities", h.CreateActivity)
 		r.Get("/activities/{id}", h.GetActivity)
+		r.Get("/activities/{id}/records", h.GetActivityRecords)
+		r.Get("/activities/{id}/power-curve", h.GetPowerCurve)
 	})
 
 	// Server setup
@@ -71,9 +73,9 @@ func main() {
 	server := &http.Server{
 		Addr:         ":" + port,
 		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  60 * time.Second,
+		WriteTimeout: 120 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	// Graceful shutdown

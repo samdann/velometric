@@ -84,12 +84,11 @@ Created with: TypeScript, Tailwind, App Router, src dir, ESLint
 - Initial migration with full schema
 - Seed script for development
 
-### Step 5 — FIT file upload flow
+### Step 5 ✅ — FIT file upload flow
 - Frontend: drag & drop upload component
-- Backend: receive file, store raw in object storage
-- Backend: parse .FIT file (use go-fit library)
-- Backend: compute derived metrics (NP, TSS, IF, power curve, zones)
-- Backend: insert parsed data into Postgres
+- Backend: receive file, parse with tormoder/fit library
+- Backend: compute derived metrics (NP, TSS, IF, power curve)
+- Backend: insert parsed data into Postgres (activity, records, laps, power curve, events)
 - Frontend: redirect to activity detail page
 
 ### Step 6 ✅ — Docker Compose
