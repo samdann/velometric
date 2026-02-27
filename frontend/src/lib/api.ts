@@ -101,6 +101,32 @@ class ApiClient {
     return response.json();
   }
 
+  async getLaps(id: string): Promise<{
+    lapNumber: number;
+    startTime: string;
+    duration: number;
+    distance: number;
+    avgPower?: number;
+    maxPower?: number;
+    avgHeartRate?: number;
+    maxHeartRate?: number;
+    avgCadence?: number;
+    avgSpeed?: number;
+    maxSpeed?: number;
+    ascent?: number;
+    descent?: number;
+    trigger?: string;
+  }[]> {
+    const response = await fetch(`${this.baseUrl}/api/activities/${id}/laps`);
+
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to fetch laps");
+    }
+
+    return response.json();
+  }
+
   async checkHealth(): Promise<{ status: string; database: string }> {
     const response = await fetch(`${this.baseUrl}/health`);
     return response.json();

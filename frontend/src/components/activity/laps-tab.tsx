@@ -46,11 +46,7 @@ export function LapsTab({ activityId }: LapsTabProps) {
   useEffect(() => {
     async function fetchLaps() {
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081"}/api/activities/${activityId}/laps`
-        );
-        if (!response.ok) throw new Error("Failed to fetch laps");
-        const data = await response.json();
+        const data = await api.getLaps(activityId);
         setLaps(data || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load laps");

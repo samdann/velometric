@@ -3,6 +3,7 @@
 ## Bugs
 <!-- Format: - [ ] Brief description | Details/reproduction steps -->
 - [x] in UI, clicking on tabs other than overview does not display new data. overview data seems persistant
+- [x] when opening the "laps" tab {laps-tab.tsx}, im getting "Failed to execute 'json' on 'Response': Unexpected end of JSON input"
 
 
 ## Improvements

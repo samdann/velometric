@@ -286,7 +286,7 @@ func (s *ActivityService) ProcessFITFile(ctx context.Context, userID uuid.UUID, 
 			MaxSpeed:   lap.MaxSpeed,
 			Ascent:     lap.Ascent,
 			Descent:    lap.Descent,
-			Trigger:    lap.Trigger,
+			Trigger:    &lap.Trigger,
 		}
 	}
 

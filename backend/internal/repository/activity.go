@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -12,6 +13,14 @@ import (
 
 	"github.com/velometric/backend/internal/model"
 )
+
+// sanitizeFloat sets NaN/Inf float pointers to nil so they serialize to JSON null.
+func sanitizeFloat(f *float64) *float64 {
+	if f == nil || math.IsNaN(*f) || math.IsInf(*f, 0) {
+		return nil
+	}
+	return f
+}
 
 // ErrDuplicateActivity is returned when an activity with the same
 // (user_id, start_time, sport, distance, duration) already exists.
@@ -261,6 +270,18 @@ func (r *ActivityRepository) GetRecords(ctx context.Context, activityID uuid.UUI
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan record: %w", err)
 		}
+		r.Lat = sanitizeFloat(r.Lat)
+		r.Lon = sanitizeFloat(r.Lon)
+		r.Altitude = sanitizeFloat(r.Altitude)
+		r.Distance = sanitizeFloat(r.Distance)
+		r.Speed = sanitizeFloat(r.Speed)
+		r.Temperature = sanitizeFloat(r.Temperature)
+		r.LeftRightBalance = sanitizeFloat(r.LeftRightBalance)
+		r.LeftTorqueEffectiveness = sanitizeFloat(r.LeftTorqueEffectiveness)
+		r.RightTorqueEffectiveness = sanitizeFloat(r.RightTorqueEffectiveness)
+		r.LeftPedalSmoothness = sanitizeFloat(r.LeftPedalSmoothness)
+		r.RightPedalSmoothness = sanitizeFloat(r.RightPedalSmoothness)
+		r.Gradient = sanitizeFloat(r.Gradient)
 		records = append(records, r)
 	}
 	return records, nil
@@ -281,7 +302,7 @@ func (r *ActivityRepository) GetLaps(ctx context.Context, activityID uuid.UUID) 
 	}
 	defer rows.Close()
 
-	var laps []model.ActivityLap
+	laps := make([]model.ActivityLap, 0)
 	for rows.Next() {
 		var l model.ActivityLap
 		if err := rows.Scan(
@@ -291,6 +312,10 @@ func (r *ActivityRepository) GetLaps(ctx context.Context, activityID uuid.UUID) 
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan lap: %w", err)
 		}
+		l.AvgSpeed = sanitizeFloat(l.AvgSpeed)
+		l.MaxSpeed = sanitizeFloat(l.MaxSpeed)
+		l.Ascent = sanitizeFloat(l.Ascent)
+		l.Descent = sanitizeFloat(l.Descent)
 		laps = append(laps, l)
 	}
 	return laps, nil

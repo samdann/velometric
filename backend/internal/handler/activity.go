@@ -204,9 +204,15 @@ func (h *Handler) GetLaps(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
+	b, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("writeJSON marshal error: %v", err)
+		http.Error(w, `{"error":"failed to encode response"}`, http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+	w.Write(b)
 }
 
 func writeError(w http.ResponseWriter, status int, message string) {

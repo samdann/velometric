@@ -106,7 +106,7 @@ type ActivityLap struct {
 	Ascent  *float64 `json:"ascent,omitempty"`
 	Descent *float64 `json:"descent,omitempty"`
 
-	Trigger string `json:"trigger,omitempty"`
+	Trigger *string `json:"trigger,omitempty"`
 }
 
 // PowerCurvePoint represents a best effort at a specific duration
