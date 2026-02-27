@@ -177,10 +177,12 @@ func (r *ActivityRepository) InsertPowerCurve(ctx context.Context, points []mode
 	batch := &pgx.Batch{}
 	for _, p := range points {
 		batch.Queue(`
-			INSERT INTO activity_power_curve (activity_id, duration_seconds, best_power)
-			VALUES ($1, $2, $3)
-			ON CONFLICT (activity_id, duration_seconds) DO UPDATE SET best_power = EXCLUDED.best_power
-		`, p.ActivityID, p.DurationSeconds, p.BestPower)
+			INSERT INTO activity_power_curve (activity_id, duration_seconds, best_power, avg_hr)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (activity_id, duration_seconds) DO UPDATE SET
+				best_power = EXCLUDED.best_power,
+				avg_hr = EXCLUDED.avg_hr
+		`, p.ActivityID, p.DurationSeconds, p.BestPower, p.AvgHeartRate)
 	}
 
 	results := r.pool.SendBatch(ctx, batch)
@@ -287,7 +289,7 @@ func (r *ActivityRepository) GetLaps(ctx context.Context, activityID uuid.UUID) 
 // GetPowerCurve retrieves the power curve for an activity
 func (r *ActivityRepository) GetPowerCurve(ctx context.Context, activityID uuid.UUID) ([]model.PowerCurvePoint, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT activity_id, duration_seconds, best_power
+		SELECT activity_id, duration_seconds, best_power, avg_hr
 		FROM activity_power_curve
 		WHERE activity_id = $1
 		ORDER BY duration_seconds ASC
@@ -300,7 +302,7 @@ func (r *ActivityRepository) GetPowerCurve(ctx context.Context, activityID uuid.
 	var points []model.PowerCurvePoint
 	for rows.Next() {
 		var p model.PowerCurvePoint
-		if err := rows.Scan(&p.ActivityID, &p.DurationSeconds, &p.BestPower); err != nil {
+		if err := rows.Scan(&p.ActivityID, &p.DurationSeconds, &p.BestPower, &p.AvgHeartRate); err != nil {
 			return nil, fmt.Errorf("failed to scan power curve point: %w", err)
 		}
 		points = append(points, p)

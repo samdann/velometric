@@ -294,15 +294,28 @@ func (s *ActivityService) ProcessFITFile(ctx context.Context, userID uuid.UUID, 
 		return nil, fmt.Errorf("failed to insert laps: %w", err)
 	}
 
-	// Compute and save power curve
-	if len(powers) > 0 {
-		powerCurveMap := ComputePowerCurve(powers)
+	// Compute and save power curve with heart rate and elevation data
+	var pcRecords []PowerCurveRecord
+	for _, rec := range parsed.Records {
+		if rec.Power == nil {
+			continue
+		}
+		pcr := PowerCurveRecord{Power: *rec.Power}
+		if rec.HeartRate != nil {
+			pcr.HeartRate = *rec.HeartRate
+		}
+		pcRecords = append(pcRecords, pcr)
+	}
+
+	if len(pcRecords) > 0 {
+		powerCurveMap := ComputePowerCurveExtended(pcRecords)
 		powerCurve := make([]model.PowerCurvePoint, 0, len(powerCurveMap))
-		for duration, power := range powerCurveMap {
+		for duration, result := range powerCurveMap {
 			powerCurve = append(powerCurve, model.PowerCurvePoint{
 				ActivityID:      activityID,
 				DurationSeconds: duration,
-				BestPower:       power,
+				BestPower:       result.BestPower,
+				AvgHeartRate:    result.AvgHeartRate,
 			})
 		}
 

@@ -6,6 +6,7 @@ import { api, Activity } from "@/lib/api";
 interface PowerCurvePoint {
   durationSeconds: number;
   bestPower: number;
+  avgHeartRate?: number;
 }
 
 interface PowerTabProps {
@@ -25,9 +26,24 @@ function formatDuration(seconds: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-// Standard power curve durations to highlight
-const KEY_DURATIONS = [5, 30, 60, 300, 1200, 3600];
+// Standard power curve durations to display in table
+const TABLE_DURATIONS = [5, 15, 30, 60, 300, 600, 1200, 1800, 2700, 3600];
 const DURATION_LABELS: Record<number, string> = {
+  5: "5s",
+  15: "15s",
+  30: "30s",
+  60: "1m",
+  300: "5m",
+  600: "10m",
+  1200: "20m",
+  1800: "30m",
+  2700: "45m",
+  3600: "1h",
+};
+
+// Key durations for the summary cards
+const KEY_DURATIONS = [5, 30, 60, 300, 1200, 3600];
+const KEY_DURATION_LABELS: Record<number, string> = {
   5: "5 sec",
   30: "30 sec",
   60: "1 min",
@@ -73,15 +89,22 @@ export function PowerTab({ activityId, activity }: PowerTabProps) {
     );
   }
 
-  // Get key power values
+  // Get key power values for summary cards
   const keyPowers = KEY_DURATIONS.map((duration) => {
     const point = powerCurve.find((p) => p.durationSeconds === duration);
     return {
       duration,
-      label: DURATION_LABELS[duration],
+      label: KEY_DURATION_LABELS[duration],
       power: point?.bestPower ?? null,
     };
   }).filter((p) => p.power !== null);
+
+  // Get table rows filtered to standard durations
+  const tableRows = TABLE_DURATIONS.map((duration) => {
+    return powerCurve.find((p) => p.durationSeconds === duration) ?? null;
+  }).filter((p) => p !== null) as PowerCurvePoint[];
+
+  const hasHR = tableRows.some((r) => r.avgHeartRate != null);
 
   return (
     <div className="mt-6 space-y-6">
@@ -156,7 +179,7 @@ export function PowerTab({ activityId, activity }: PowerTabProps) {
       )}
 
       {/* Full Power Curve Table */}
-      {powerCurve.length > 0 && (
+      {tableRows.length > 0 && (
         <div>
           <h3 className="mb-3 text-sm font-medium text-foreground-muted">Power Curve</h3>
           <div className="overflow-hidden rounded-lg border border-border">
@@ -169,17 +192,27 @@ export function PowerTab({ activityId, activity }: PowerTabProps) {
                   <th className="px-4 py-2 text-right text-xs font-medium text-foreground-muted">
                     Best Power
                   </th>
+                  {hasHR && (
+                    <th className="px-4 py-2 text-right text-xs font-medium text-foreground-muted">
+                      Avg HR
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {powerCurve.map((point) => (
+                {tableRows.map((point) => (
                   <tr key={point.durationSeconds} className="hover:bg-background-subtle/50">
-                    <td className="px-4 py-2 text-sm">
-                      {formatDuration(point.durationSeconds)}
+                    <td className="px-4 py-2 font-mono text-sm">
+                      {DURATION_LABELS[point.durationSeconds]}
                     </td>
                     <td className="px-4 py-2 text-right font-mono text-sm text-power">
                       {point.bestPower}w
                     </td>
+                    {hasHR && (
+                      <td className="px-4 py-2 text-right font-mono text-sm text-heart-rate">
+                        {point.avgHeartRate != null ? `${point.avgHeartRate} bpm` : "—"}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

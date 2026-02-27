@@ -114,6 +114,7 @@ type PowerCurvePoint struct {
 	ActivityID      uuid.UUID `json:"activityId"`
 	DurationSeconds int       `json:"durationSeconds"`
 	BestPower       int       `json:"bestPower"`
+	AvgHeartRate    *int      `json:"avgHeartRate,omitempty"`
 }
 
 // ActivityEvent represents an event during an activity

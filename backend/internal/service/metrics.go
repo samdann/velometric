@@ -94,6 +94,69 @@ func ComputePowerCurve(powers []int) map[int]int {
 	return curve
 }
 
+// PowerCurveRecord holds per-second data for extended power curve computation
+type PowerCurveRecord struct {
+	Power     int
+	HeartRate int // 0 if not available
+}
+
+// PowerCurveResult holds the result for a single duration
+type PowerCurveResult struct {
+	BestPower    int
+	AvgHeartRate *int
+}
+
+// ComputePowerCurveExtended calculates best power for standard durations
+// and also computes avg heart rate and elevation gain for the best window.
+func ComputePowerCurveExtended(records []PowerCurveRecord) map[int]PowerCurveResult {
+	durations := []int{1, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 300, 600, 900, 1200, 1800, 2700, 3600, 5400, 7200}
+
+	results := make(map[int]PowerCurveResult)
+	n := len(records)
+
+	for _, duration := range durations {
+		if duration > n {
+			break
+		}
+
+		var windowSum int
+		for i := 0; i < duration; i++ {
+			windowSum += records[i].Power
+		}
+		maxSum := windowSum
+		bestStart := 0
+
+		for i := duration; i < n; i++ {
+			windowSum = windowSum - records[i-duration].Power + records[i].Power
+			if windowSum > maxSum {
+				maxSum = windowSum
+				bestStart = i - duration + 1
+			}
+		}
+
+		result := PowerCurveResult{
+			BestPower: maxSum / duration,
+		}
+
+		// Average heart rate over the best window
+		var hrSum, hrCount int
+		for j := bestStart; j < bestStart+duration; j++ {
+			if records[j].HeartRate > 0 {
+				hrSum += records[j].HeartRate
+				hrCount++
+			}
+		}
+		if hrCount > 0 {
+			avgHR := hrSum / hrCount
+			result.AvgHeartRate = &avgHR
+		}
+
+		results[duration] = result
+	}
+
+	return results
+}
+
 // ComputeAverage calculates the average of non-zero values
 func ComputeAverage(values []int) int {
 	if len(values) == 0 {

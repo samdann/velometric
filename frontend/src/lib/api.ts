@@ -90,7 +90,7 @@ class ApiClient {
     return response.json();
   }
 
-  async getPowerCurve(id: string): Promise<{ durationSeconds: number; bestPower: number }[]> {
+  async getPowerCurve(id: string): Promise<{ durationSeconds: number; bestPower: number; avgHeartRate?: number }[]> {
     const response = await fetch(`${this.baseUrl}/api/activities/${id}/power-curve`);
 
     if (!response.ok) {
