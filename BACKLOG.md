@@ -9,7 +9,7 @@
 <!-- Format: - [ ] Brief description | Context/requirements -->
 - [x] Power curve table in power-tab.tsx, should only display data for 5s, 15s, 30s, 1m, 5m, 10m, 20m, 30m, 45m, 1h, and including 2 more columns: heart rate, elevation
 - [x] Key Power Outputs: should display 2 rows, 1st for power data, second for IS, TSS and VI
-- [ ] Create a primary key on activity data: main fields should not be the same. propose a combination.
+- [x] Create a primary key on activity data: main fields should not be the same. propose a combination. | `UNIQUE(user_id, start_time, sport, distance, duration)`
 
 
 ## Tech Debt

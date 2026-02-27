@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/velometric/backend/internal/fitparser"
+	"github.com/velometric/backend/internal/repository"
 )
 
 // UploadResponse is returned after successful FIT file upload
@@ -118,6 +120,10 @@ func (h *Handler) CreateActivity(w http.ResponseWriter, r *http.Request) {
 	// Process and store the activity
 	activity, err := h.activityService.ProcessFITFile(r.Context(), userID, parsed, ftp)
 	if err != nil {
+		if errors.Is(err, repository.ErrDuplicateActivity) {
+			writeError(w, http.StatusConflict, "This activity has already been uploaded")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "Failed to process activity: "+err.Error())
 		return
 	}

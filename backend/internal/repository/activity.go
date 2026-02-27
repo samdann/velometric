@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -12,6 +13,10 @@ import (
 	"github.com/velometric/backend/internal/model"
 )
 
+// ErrDuplicateActivity is returned when an activity with the same
+// (user_id, start_time, sport, distance, duration) already exists.
+var ErrDuplicateActivity = errors.New("activity already exists")
+
 type ActivityRepository struct {
 	pool *pgxpool.Pool
 }
@@ -20,7 +25,8 @@ func NewActivityRepository(pool *pgxpool.Pool) *ActivityRepository {
 	return &ActivityRepository{pool: pool}
 }
 
-// Create inserts a new activity and returns its ID
+// Create inserts a new activity and returns its ID.
+// Returns ErrDuplicateActivity if the same file was already uploaded.
 func (r *ActivityRepository) Create(ctx context.Context, a *model.Activity) (uuid.UUID, error) {
 	var id uuid.UUID
 	err := r.pool.QueryRow(ctx, `
@@ -34,7 +40,8 @@ func (r *ActivityRepository) Create(ctx context.Context, a *model.Activity) (uui
 			$8, $9, $10, $11, $12, $13,
 			$14, $15, $16, $17, $18, $19,
 			$20, $21, $22
-		) RETURNING id
+		) ON CONFLICT ON CONSTRAINT unique_activity DO NOTHING
+		RETURNING id
 	`,
 		a.UserID, a.Name, a.Sport, a.StartTime, a.Duration, a.Distance, a.ElevationGain,
 		a.AvgPower, a.MaxPower, a.NormalizedPower, a.TSS, a.IntensityFactor, a.VariabilityIndex,
@@ -42,6 +49,9 @@ func (r *ActivityRepository) Create(ctx context.Context, a *model.Activity) (uui
 		a.Calories, a.AvgTemperature, a.FitFileURL,
 	).Scan(&id)
 
+	if err == pgx.ErrNoRows {
+		return uuid.Nil, ErrDuplicateActivity
+	}
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create activity: %w", err)
 	}
