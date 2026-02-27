@@ -1,0 +1,300 @@
+openapi: 3.0.3
+info:
+  title: Velometric API
+  description: Cycling performance analytics — upload FIT files, get deep performance insights.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8081
+    description: Local development
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      tags: [System]
+      responses:
+        "200":
+          description: OK
+
+  /api/activities:
+    get:
+      summary: List activities
+      tags: [Activities]
+      responses:
+        "200":
+          description: List of activities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+    post:
+      summary: Upload a FIT file
+      tags: [Activities]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Activity created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
+        "409":
+          description: Duplicate activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/activities/{id}:
+    get:
+      summary: Get activity detail
+      tags: [Activities]
+      parameters:
+        - $ref: "#/components/parameters/ActivityId"
+      responses:
+        "200":
+          description: Activity detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+        "404":
+          description: Not found
+
+  /api/activities/{id}/records:
+    get:
+      summary: Get time-series records
+      tags: [Activities]
+      parameters:
+        - $ref: "#/components/parameters/ActivityId"
+      responses:
+        "200":
+          description: Array of time-series data points
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityRecord"
+
+  /api/activities/{id}/elevation:
+    get:
+      summary: Get elevation profile
+      tags: [Activities]
+      parameters:
+        - $ref: "#/components/parameters/ActivityId"
+      responses:
+        "200":
+          description: Smoothed, downsampled elevation profile
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ElevationPoint"
+
+  /api/activities/{id}/power-curve:
+    get:
+      summary: Get power curve (best efforts)
+      tags: [Activities]
+      parameters:
+        - $ref: "#/components/parameters/ActivityId"
+      responses:
+        "200":
+          description: Power curve entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PowerCurveEntry"
+
+  /api/activities/{id}/laps:
+    get:
+      summary: Get laps
+      tags: [Activities]
+      parameters:
+        - $ref: "#/components/parameters/ActivityId"
+      responses:
+        "200":
+          description: Array of laps
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityLap"
+
+components:
+  parameters:
+    ActivityId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    Activity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        sport:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+          description: seconds
+        distance:
+          type: number
+          description: meters
+        elevationGain:
+          type: number
+          description: meters
+        avgPower:
+          type: integer
+          description: watts
+        maxPower:
+          type: integer
+        normalizedPower:
+          type: integer
+        tss:
+          type: number
+        intensityFactor:
+          type: number
+        variabilityIndex:
+          type: number
+        avgHeartRate:
+          type: integer
+        maxHeartRate:
+          type: integer
+        avgCadence:
+          type: integer
+        maxCadence:
+          type: integer
+        avgSpeed:
+          type: number
+          description: m/s
+        maxSpeed:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+
+    ActivityRecord:
+      type: object
+      properties:
+        activityId:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        lat:
+          type: number
+        lon:
+          type: number
+        altitude:
+          type: number
+        distance:
+          type: number
+        power:
+          type: integer
+        heartRate:
+          type: integer
+        cadence:
+          type: integer
+        speed:
+          type: number
+        temperature:
+          type: number
+
+    ElevationPoint:
+      type: object
+      properties:
+        distance:
+          type: number
+          description: km
+        altitude:
+          type: number
+          description: meters
+
+    PowerCurveEntry:
+      type: object
+      properties:
+        durationSeconds:
+          type: integer
+        bestPower:
+          type: integer
+        avgHr:
+          type: integer
+
+    ActivityLap:
+      type: object
+      properties:
+        lapNumber:
+          type: integer
+        startTime:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+        distance:
+          type: number
+        avgPower:
+          type: integer
+        maxPower:
+          type: integer
+        avgHR:
+          type: integer
+        maxHR:
+          type: integer
+        avgCadence:
+          type: integer
+        avgSpeed:
+          type: number
+        maxSpeed:
+          type: number
+        ascent:
+          type: number
+        descent:
+          type: number
+        trigger:
+          type: string
+
+    UploadResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        message:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string

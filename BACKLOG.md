@@ -6,7 +6,8 @@
 - [x] when opening the "laps" tab {laps-tab.tsx}, im getting "Failed to execute 'json' on 'Response': Unexpected end of JSON input"
 
 ## New Feature
-- [ ] Under overview tab, under the summary, build a graph for display elevation profile (elevation by distance)
+- [x] Under overview tab, under the summary, build a graph for display elevation profile (elevation by distance)
+- [x] Connect Swagger UI at port 8081 for testing backend endpoints
 
 
 ## Improvements

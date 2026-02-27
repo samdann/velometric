@@ -54,6 +54,8 @@ func main() {
 
 	// Routes
 	r.Get("/health", h.Health)
+	r.Get("/docs", h.SwaggerUI)
+	r.Get("/docs/openapi.yaml", h.OpenAPISpec)
 
 	// API routes
 	r.Route("/api", func(r chi.Router) {
