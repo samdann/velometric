@@ -40,7 +40,22 @@ export function ElevationChart({ activityId }: ElevationChartProps) {
 
   const minAlt = Math.min(...data.map((d) => d.altitude));
   const maxAlt = Math.max(...data.map((d) => d.altitude));
-  const padding = Math.max((maxAlt - minAlt) * 0.1, 10);
+  const maxDist = Math.max(...data.map((d) => d.distance));
+
+  function niceStep(range: number, steps: number[]): number {
+    for (const s of steps) if (range / s <= 8) return s;
+    return steps[steps.length - 1];
+  }
+
+  const altStep = niceStep(maxAlt - minAlt, [10, 20, 50, 100, 200, 500]);
+  const altMin = Math.floor(minAlt / altStep) * altStep;
+  const altMax = Math.ceil(maxAlt / altStep) * altStep;
+  const altTicks: number[] = [];
+  for (let t = altMin; t <= altMax; t += altStep) altTicks.push(t);
+
+  const distStep = niceStep(maxDist, [1, 2, 5, 10, 20, 50]);
+  const distTicks: number[] = [];
+  for (let t = 0; t <= maxDist; t += distStep) distTicks.push(parseFloat(t.toFixed(1)));
 
   return (
     <div className="mt-6">
@@ -57,15 +72,18 @@ export function ElevationChart({ activityId }: ElevationChartProps) {
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
             <XAxis
               dataKey="distance"
-              tickFormatter={(v) => `${v.toFixed(1)}km`}
+              type="number"
+              domain={[0, maxDist]}
+              ticks={distTicks}
+              tickFormatter={(v) => `${v}km`}
               tick={{ fontSize: 10, fill: "var(--color-foreground-muted)" }}
               axisLine={false}
               tickLine={false}
-              interval="preserveStartEnd"
             />
             <YAxis
-              domain={[minAlt - padding, maxAlt + padding]}
-              tickFormatter={(v) => `${Math.round(v)}m`}
+              domain={[altMin, altMax]}
+              ticks={altTicks}
+              tickFormatter={(v) => `${v}m`}
               tick={{ fontSize: 10, fill: "var(--color-foreground-muted)" }}
               axisLine={false}
               tickLine={false}
@@ -78,8 +96,9 @@ export function ElevationChart({ activityId }: ElevationChartProps) {
                 borderRadius: "6px",
                 fontSize: "12px",
               }}
-              // formatter={(value: number) => [`${Math.round(value)}m`, "Elevation"]}
-              // labelFormatter={(label: number) => `${label.toFixed(2)} km`}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              formatter={(value: any) => [`${Math.round(value ?? 0)}m`, "Elevation"]}
+              labelFormatter={(label: any) => `${Number(label).toFixed(1)} km`}
             />
             <Area
               type="monotone"
