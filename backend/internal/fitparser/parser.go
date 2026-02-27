@@ -60,16 +60,13 @@ func Parse(r io.Reader) (*ParsedActivity, error) {
 		parsed.Sport = session.Sport.String()
 
 		// Extract session-level summary metrics
-		if session.GetTotalDistanceScaled() != math.MaxFloat64 {
-			dist := session.GetTotalDistanceScaled()
+		if dist := session.GetTotalDistanceScaled(); !math.IsNaN(dist) {
 			parsed.TotalDistance = &dist
 		}
-		if session.GetTotalTimerTimeScaled() != math.MaxFloat64 {
-			timerTime := session.GetTotalTimerTimeScaled()
+		if timerTime := session.GetTotalTimerTimeScaled(); !math.IsNaN(timerTime) {
 			parsed.TotalTimerTime = &timerTime
 		}
-		if session.GetTotalElapsedTimeScaled() != math.MaxFloat64 {
-			elapsedTime := session.GetTotalElapsedTimeScaled()
+		if elapsedTime := session.GetTotalElapsedTimeScaled(); !math.IsNaN(elapsedTime) {
 			parsed.TotalElapsedTime = &elapsedTime
 		}
 		if session.TotalAscent != 0xFFFF {
@@ -108,12 +105,10 @@ func Parse(r io.Reader) (*ParsedActivity, error) {
 			maxCad := int(session.MaxCadence)
 			parsed.MaxCadence = &maxCad
 		}
-		if session.GetAvgSpeedScaled() != math.MaxFloat64 {
-			avgSpeed := session.GetAvgSpeedScaled()
+		if avgSpeed := session.GetAvgSpeedScaled(); !math.IsNaN(avgSpeed) {
 			parsed.AvgSpeed = &avgSpeed
 		}
-		if session.GetMaxSpeedScaled() != math.MaxFloat64 {
-			maxSpeed := session.GetMaxSpeedScaled()
+		if maxSpeed := session.GetMaxSpeedScaled(); !math.IsNaN(maxSpeed) {
 			parsed.MaxSpeed = &maxSpeed
 		}
 		if session.TotalCalories != 0xFFFF {
@@ -148,15 +143,15 @@ func Parse(r io.Reader) (*ParsedActivity, error) {
 			record.Lon = &lon
 		}
 
-		// Altitude
-		if rec.GetAltitudeScaled() != math.MaxFloat64 {
-			alt := rec.GetAltitudeScaled()
+		// Altitude — try enhanced (uint32) first, fall back to standard (uint16)
+		if alt := rec.GetEnhancedAltitudeScaled(); !math.IsNaN(alt) {
+			record.Altitude = &alt
+		} else if alt := rec.GetAltitudeScaled(); !math.IsNaN(alt) {
 			record.Altitude = &alt
 		}
 
 		// Distance
-		if rec.GetDistanceScaled() != math.MaxFloat64 {
-			dist := rec.GetDistanceScaled()
+		if dist := rec.GetDistanceScaled(); !math.IsNaN(dist) {
 			record.Distance = &dist
 		}
 
@@ -179,8 +174,7 @@ func Parse(r io.Reader) (*ParsedActivity, error) {
 		}
 
 		// Speed
-		if rec.GetSpeedScaled() != math.MaxFloat64 {
-			speed := rec.GetSpeedScaled()
+		if speed := rec.GetSpeedScaled(); !math.IsNaN(speed) {
 			record.Speed = &speed
 		}
 
@@ -248,12 +242,10 @@ func Parse(r io.Reader) (*ParsedActivity, error) {
 			avgCad := int(lap.AvgCadence)
 			parsedLap.AvgCadence = &avgCad
 		}
-		if lap.GetAvgSpeedScaled() != math.MaxFloat64 {
-			avgSpeed := lap.GetAvgSpeedScaled()
+		if avgSpeed := lap.GetAvgSpeedScaled(); !math.IsNaN(avgSpeed) {
 			parsedLap.AvgSpeed = &avgSpeed
 		}
-		if lap.GetMaxSpeedScaled() != math.MaxFloat64 {
-			maxSpeed := lap.GetMaxSpeedScaled()
+		if maxSpeed := lap.GetMaxSpeedScaled(); !math.IsNaN(maxSpeed) {
 			parsedLap.MaxSpeed = &maxSpeed
 		}
 		if lap.TotalAscent != 0xFFFF {

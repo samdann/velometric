@@ -10,6 +10,7 @@ import { MapTab } from "@/components/activity/map-tab";
 import { SegmentsTab } from "@/components/activity/segments-tab";
 import { LapsTab } from "@/components/activity/laps-tab";
 import { DataTab } from "@/components/activity/data-tab";
+import { ElevationChart } from "@/components/activity/elevation-chart";
 import { api, Activity } from "@/lib/api";
 import { ActivityTab } from "@/types/activity";
 
@@ -116,6 +117,7 @@ export default function ActivityDetailPage() {
 
         {/* Tab Content */}
         {activeTab === "overview" && (
+        <div>
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           <StatCard
             label="Duration"
@@ -196,6 +198,8 @@ export default function ActivityDetailPage() {
               value={activity.variabilityIndex.toFixed(2)}
             />
           )}
+        </div>
+          <ElevationChart activityId={id} />
         </div>
         )}
 

@@ -117,6 +117,12 @@ type PowerCurvePoint struct {
 	AvgHeartRate    *int      `json:"avgHeartRate,omitempty"`
 }
 
+// ElevationPoint represents a distance/altitude pair for the elevation profile
+type ElevationPoint struct {
+	Distance float64 `json:"distance"` // km
+	Altitude float64 `json:"altitude"` // meters
+}
+
 // ActivityEvent represents an event during an activity
 type ActivityEvent struct {
 	ID         uuid.UUID              `json:"id"`

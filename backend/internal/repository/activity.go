@@ -321,6 +321,37 @@ func (r *ActivityRepository) GetLaps(ctx context.Context, activityID uuid.UUID) 
 	return laps, nil
 }
 
+// GetElevationProfile retrieves raw distance/altitude pairs for an activity
+func (r *ActivityRepository) GetElevationProfile(ctx context.Context, activityID uuid.UUID) ([]model.ElevationPoint, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT distance, altitude
+		FROM activity_records
+		WHERE activity_id = $1
+		  AND distance IS NOT NULL
+		  AND altitude IS NOT NULL
+		ORDER BY timestamp ASC
+	`, activityID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get elevation profile: %w", err)
+	}
+	defer rows.Close()
+
+	points := make([]model.ElevationPoint, 0)
+	for rows.Next() {
+		var p model.ElevationPoint
+		var distMeters float64
+		if err := rows.Scan(&distMeters, &p.Altitude); err != nil {
+			return nil, fmt.Errorf("failed to scan elevation point: %w", err)
+		}
+		if sanitizeFloat(&p.Altitude) == nil {
+			continue
+		}
+		p.Distance = distMeters / 1000.0 // convert to km
+		points = append(points, p)
+	}
+	return points, nil
+}
+
 // GetPowerCurve retrieves the power curve for an activity
 func (r *ActivityRepository) GetPowerCurve(ctx context.Context, activityID uuid.UUID) ([]model.PowerCurvePoint, error) {
 	rows, err := r.pool.Query(ctx, `

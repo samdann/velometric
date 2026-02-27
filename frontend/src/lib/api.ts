@@ -101,6 +101,15 @@ class ApiClient {
     return response.json();
   }
 
+  async getElevationProfile(id: string): Promise<{ distance: number; altitude: number }[]> {
+    const response = await fetch(`${this.baseUrl}/api/activities/${id}/elevation`);
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to fetch elevation profile");
+    }
+    return response.json();
+  }
+
   async getLaps(id: string): Promise<{
     lapNumber: number;
     startTime: string;

@@ -5,6 +5,9 @@
 - [x] in UI, clicking on tabs other than overview does not display new data. overview data seems persistant
 - [x] when opening the "laps" tab {laps-tab.tsx}, im getting "Failed to execute 'json' on 'Response': Unexpected end of JSON input"
 
+## New Feature
+- [x] Under overview tab, under the summary, build a graph for display elevation profile (elevation by distance)
+
 
 ## Improvements
 <!-- Format: - [ ] Brief description | Context/requirements -->
