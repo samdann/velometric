@@ -56,6 +56,7 @@ func main() {
 	r.Get("/health", h.Health)
 	r.Get("/docs", h.SwaggerUI)
 	r.Get("/docs/openapi.yaml", h.OpenAPISpec)
+	r.Get("/favicon.ico", h.Favicon)
 
 	// API routes
 	r.Route("/api", func(r chi.Router) {
@@ -65,6 +66,7 @@ func main() {
 		r.Get("/activities/{id}/records", h.GetActivityRecords)
 		r.Get("/activities/{id}/power-curve", h.GetPowerCurve)
 		r.Get("/activities/{id}/elevation", h.GetElevationProfile)
+		r.Get("/activities/{id}/speed", h.GetSpeedProfile)
 		r.Get("/activities/{id}/laps", h.GetLaps)
 	})
 

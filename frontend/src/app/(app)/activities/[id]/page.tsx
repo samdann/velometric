@@ -11,6 +11,7 @@ import { SegmentsTab } from "@/components/activity/segments-tab";
 import { LapsTab } from "@/components/activity/laps-tab";
 import { DataTab } from "@/components/activity/data-tab";
 import { ElevationChart } from "@/components/activity/elevation-chart";
+import { SpeedChart } from "@/components/activity/speed-chart";
 import { api, Activity } from "@/lib/api";
 import { ActivityTab } from "@/types/activity";
 
@@ -200,6 +201,7 @@ export default function ActivityDetailPage() {
           )}
         </div>
           <ElevationChart activityId={id} />
+          <SpeedChart activityId={id} />
         </div>
         )}
 

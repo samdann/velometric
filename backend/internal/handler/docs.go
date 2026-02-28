@@ -8,6 +8,9 @@ import (
 //go:embed openapi.yaml
 var openapiSpec []byte
 
+//go:embed favicon.ico
+var favicon []byte
+
 func (h *Handler) SwaggerUI(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
@@ -17,6 +20,7 @@ func (h *Handler) SwaggerUI(w http.ResponseWriter, r *http.Request) {
   <title>Velometric API</title>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
 </head>
 <body>
@@ -39,4 +43,10 @@ func (h *Handler) OpenAPISpec(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/yaml")
 	w.WriteHeader(http.StatusOK)
 	w.Write(openapiSpec)
+}
+
+func (h *Handler) Favicon(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "image/x-icon")
+	w.WriteHeader(http.StatusOK)
+	w.Write(favicon)
 }

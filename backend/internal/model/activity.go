@@ -123,6 +123,12 @@ type ElevationPoint struct {
 	Altitude float64 `json:"altitude"` // meters
 }
 
+// SpeedPoint represents a distance/speed pair for the speed profile
+type SpeedPoint struct {
+	Distance float64 `json:"distance"` // km
+	Speed    float64 `json:"speed"`    // km/h
+}
+
 // ActivityEvent represents an event during an activity
 type ActivityEvent struct {
 	ID         uuid.UUID              `json:"id"`

@@ -352,6 +352,38 @@ func (r *ActivityRepository) GetElevationProfile(ctx context.Context, activityID
 	return points, nil
 }
 
+// GetSpeedProfile retrieves raw distance/speed pairs for an activity
+func (r *ActivityRepository) GetSpeedProfile(ctx context.Context, activityID uuid.UUID) ([]model.SpeedPoint, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT distance, speed
+		FROM activity_records
+		WHERE activity_id = $1
+		  AND distance IS NOT NULL
+		  AND speed IS NOT NULL
+		ORDER BY timestamp ASC
+	`, activityID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get speed profile: %w", err)
+	}
+	defer rows.Close()
+
+	points := make([]model.SpeedPoint, 0)
+	for rows.Next() {
+		var p model.SpeedPoint
+		var distMeters, speedMps float64
+		if err := rows.Scan(&distMeters, &speedMps); err != nil {
+			return nil, fmt.Errorf("failed to scan speed point: %w", err)
+		}
+		if sanitizeFloat(&speedMps) == nil {
+			continue
+		}
+		p.Distance = distMeters / 1000.0  // convert to km
+		p.Speed = speedMps * 3.6          // convert m/s to km/h
+		points = append(points, p)
+	}
+	return points, nil
+}
+
 // GetPowerCurve retrieves the power curve for an activity
 func (r *ActivityRepository) GetPowerCurve(ctx context.Context, activityID uuid.UUID) ([]model.PowerCurvePoint, error) {
 	rows, err := r.pool.Query(ctx, `

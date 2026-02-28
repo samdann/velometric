@@ -1,14 +1,10 @@
 # Velometric Backlog
 
-## Bugs
-<!-- Format: - [ ] Brief description | Details/reproduction steps -->
-- [x] in UI, clicking on tabs other than overview does not display new data. overview data seems persistant
-- [x] when opening the "laps" tab {laps-tab.tsx}, im getting "Failed to execute 'json' on 'Response': Unexpected end of JSON input"
 
 ## New Feature
+- [x] Overview tab, under elevation graph, build a graph for speed profile (speed by distance). The graph should have the same characteristics as the elevation graph.
 - [x] Under overview tab, under the summary, build a graph for display elevation profile (elevation by distance)
-- [x] Connect Swagger UI at port 8081 for testing backend endpoints
-
+- [x] connect swagger-ui to at port 8081, so that I can test the backend endpoints
 
 ## Improvements
 <!-- Format: - [ ] Brief description | Context/requirements -->
@@ -16,14 +12,15 @@
 - [x] Key Power Outputs: should display 2 rows, 1st for power data, second for IS, TSS and VI
 - [x] Create a primary key on activity data: main fields should not be the same. propose a combination. | `UNIQUE(user_id, start_time, sport, distance, duration)`
 
+## Bugs
+<!-- Format: - [ ] Brief description | Details/reproduction steps -->
+- [x] in UI, clicking on tabs other than overview does not display new data. overview data seems persistant
+- [x] when opening the "laps" tab {laps-tab.tsx}, im getting "Failed to execute 'json' on 'Response': Unexpected end of JSON input"
 
 ## Tech Debt
 <!-- Format: - [ ] Brief description | Why it matters -->
 - [x] Create a script to wipe the database clean of any uploaded or generated data. Static data like training zone and HR zones should remain. | `make reset-activities`
 - [x] Remove console.log from api.ts | Added for debugging upload flow
-<!-- [ ] Add proper error handling for API calls | Currently minimal error messages -->
-
-
 
 ## Ideas / Future
 <!-- Format: - [ ] Brief description | Notes -->

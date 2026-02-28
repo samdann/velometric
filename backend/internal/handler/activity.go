@@ -200,6 +200,26 @@ func (h *Handler) GetElevationProfile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, points)
 }
 
+// GetSpeedProfile returns the speed profile for an activity
+func (h *Handler) GetSpeedProfile(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid activity ID")
+		return
+	}
+	if !h.HasDB() {
+		writeError(w, http.StatusServiceUnavailable, "Database not available")
+		return
+	}
+	points, err := h.activityService.GetSpeedProfile(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get speed profile")
+		return
+	}
+	writeJSON(w, http.StatusOK, points)
+}
+
 // GetLaps returns the laps for an activity
 func (h *Handler) GetLaps(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")

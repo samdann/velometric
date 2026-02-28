@@ -110,6 +110,15 @@ class ApiClient {
     return response.json();
   }
 
+  async getSpeedProfile(id: string): Promise<{ distance: number; speed: number }[]> {
+    const response = await fetch(`${this.baseUrl}/api/activities/${id}/speed`);
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to fetch speed profile");
+    }
+    return response.json();
+  }
+
   async getLaps(id: string): Promise<{
     lapNumber: number;
     startTime: string;

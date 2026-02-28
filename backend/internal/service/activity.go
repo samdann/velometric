@@ -408,6 +408,52 @@ func (s *ActivityService) GetElevationProfile(ctx context.Context, activityID uu
 	return result, nil
 }
 
+// GetSpeedProfile retrieves a smoothed, downsampled speed profile
+func (s *ActivityService) GetSpeedProfile(ctx context.Context, activityID uuid.UUID) ([]model.SpeedPoint, error) {
+	points, err := s.repo.GetSpeedProfile(ctx, activityID)
+	if err != nil {
+		return nil, err
+	}
+	if len(points) == 0 {
+		return points, nil
+	}
+
+	// Smooth with a moving average (window=7) to remove spikes
+	const smoothWindow = 7
+	smoothed := make([]model.SpeedPoint, len(points))
+	for i, p := range points {
+		start := i - smoothWindow/2
+		end := i + smoothWindow/2 + 1
+		if start < 0 {
+			start = 0
+		}
+		if end > len(points) {
+			end = len(points)
+		}
+		var sum float64
+		for j := start; j < end; j++ {
+			sum += points[j].Speed
+		}
+		smoothed[i] = model.SpeedPoint{
+			Distance: p.Distance,
+			Speed:    sum / float64(end-start),
+		}
+	}
+
+	// Downsample to ~400 points
+	const target = 400
+	if len(smoothed) <= target {
+		return smoothed, nil
+	}
+	step := float64(len(smoothed)) / float64(target)
+	result := make([]model.SpeedPoint, 0, target)
+	for i := 0; i < target; i++ {
+		result = append(result, smoothed[int(float64(i)*step)])
+	}
+	result = append(result, smoothed[len(smoothed)-1])
+	return result, nil
+}
+
 // GetLaps retrieves all laps for an activity
 func (s *ActivityService) GetLaps(ctx context.Context, activityID uuid.UUID) ([]model.ActivityLap, error) {
 	return s.repo.GetLaps(ctx, activityID)

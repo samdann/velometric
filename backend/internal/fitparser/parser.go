@@ -173,8 +173,13 @@ func Parse(r io.Reader) (*ParsedActivity, error) {
 			record.Cadence = &cad
 		}
 
-		// Speed
-		if speed := rec.GetSpeedScaled(); !math.IsNaN(speed) {
+		// Speed - prefer enhanced_speed (newer Garmin devices only write this field;
+		// basic Speed uint16 defaults to 0 rather than 0xFFFF when unset, causing false zeros)
+		speed := rec.GetEnhancedSpeedScaled()
+		if math.IsNaN(speed) {
+			speed = rec.GetSpeedScaled()
+		}
+		if !math.IsNaN(speed) {
 			record.Speed = &speed
 		}
 
