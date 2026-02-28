@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -24,9 +25,16 @@ type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
+type PaginatedActivitiesResponse struct {
+	Activities interface{} `json:"activities"`
+	Total      int         `json:"total"`
+	Page       int         `json:"page"`
+	Limit      int         `json:"limit"`
+}
+
 func (h *Handler) ListActivities(w http.ResponseWriter, r *http.Request) {
 	if !h.HasDB() {
-		writeJSON(w, http.StatusOK, []interface{}{})
+		writeJSON(w, http.StatusOK, PaginatedActivitiesResponse{Activities: []interface{}{}, Total: 0, Page: 1, Limit: 25})
 		return
 	}
 
@@ -38,13 +46,31 @@ func (h *Handler) ListActivities(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	activities, err := h.activityService.ListActivities(r.Context(), userID)
+	page := 1
+	limit := 25
+	if p := r.URL.Query().Get("page"); p != "" {
+		if v, err := strconv.Atoi(p); err == nil && v > 0 {
+			page = v
+		}
+	}
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if v, err := strconv.Atoi(l); err == nil && (v == 10 || v == 25 || v == 50) {
+			limit = v
+		}
+	}
+
+	activities, total, err := h.activityService.ListActivitiesPaginated(r.Context(), userID, page, limit)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to list activities")
 		return
 	}
 
-	writeJSON(w, http.StatusOK, activities)
+	writeJSON(w, http.StatusOK, PaginatedActivitiesResponse{
+		Activities: activities,
+		Total:      total,
+		Page:       page,
+		Limit:      limit,
+	})
 }
 
 func (h *Handler) GetActivity(w http.ResponseWriter, r *http.Request) {

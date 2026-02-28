@@ -124,6 +124,46 @@ func (r *ActivityRepository) ListByUserID(ctx context.Context, userID uuid.UUID)
 	return activities, nil
 }
 
+func (r *ActivityRepository) ListByUserIDPaginated(ctx context.Context, userID uuid.UUID, page, limit int) ([]*model.Activity, int, error) {
+	offset := (page - 1) * limit
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, user_id, name, sport, start_time, duration, distance, elevation_gain,
+			avg_power, max_power, normalized_power, tss, intensity_factor, variability_index,
+			avg_hr, max_hr, avg_cadence, max_cadence, avg_speed, max_speed,
+			calories, avg_temperature, fit_file_url, created_at, updated_at,
+			COUNT(*) OVER () AS total_count
+		FROM activities
+		WHERE user_id = $1
+		ORDER BY start_time DESC
+		LIMIT $2 OFFSET $3
+	`, userID, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list activities: %w", err)
+	}
+	defer rows.Close()
+
+	var activities []*model.Activity
+	var total int
+	for rows.Next() {
+		a := &model.Activity{}
+		err := rows.Scan(
+			&a.ID, &a.UserID, &a.Name, &a.Sport, &a.StartTime, &a.Duration, &a.Distance, &a.ElevationGain,
+			&a.AvgPower, &a.MaxPower, &a.NormalizedPower, &a.TSS, &a.IntensityFactor, &a.VariabilityIndex,
+			&a.AvgHR, &a.MaxHR, &a.AvgCadence, &a.MaxCadence, &a.AvgSpeed, &a.MaxSpeed,
+			&a.Calories, &a.AvgTemperature, &a.FitFileURL, &a.CreatedAt, &a.UpdatedAt,
+			&total,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to scan activity: %w", err)
+		}
+		activities = append(activities, a)
+	}
+	if activities == nil {
+		activities = make([]*model.Activity, 0)
+	}
+	return activities, total, nil
+}
+
 // InsertRecords bulk inserts activity records
 func (r *ActivityRepository) InsertRecords(ctx context.Context, records []model.ActivityRecord) error {
 	if len(records) == 0 {

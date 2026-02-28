@@ -24,6 +24,13 @@ export interface Activity {
   createdAt: string;
 }
 
+export interface PaginatedActivities {
+  activities: Activity[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface UploadResponse {
   id: string;
   message: string;
@@ -57,8 +64,8 @@ class ApiClient {
     return response.json();
   }
 
-  async getActivities(): Promise<Activity[]> {
-    const response = await fetch(`${this.baseUrl}/api/activities`);
+  async getActivities(page = 1, limit = 25): Promise<PaginatedActivities> {
+    const response = await fetch(`${this.baseUrl}/api/activities?page=${page}&limit=${limit}`);
 
     if (!response.ok) {
       const error: ApiError = await response.json();

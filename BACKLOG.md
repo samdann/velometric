@@ -2,6 +2,7 @@
 
 
 ## New Feature
+- [x] My activities: should be an inbox (table) displaying sport type, title, date, time, distance, elevation, avg power | item should be paginated, and page should show 10, 25 or 50 results.
 - [x] Overview tab, under elevation graph, build a graph for speed profile (speed by distance). The graph should have the same characteristics as the elevation graph.
 - [x] Under overview tab, under the summary, build a graph for display elevation profile (elevation by distance)
 - [x] connect swagger-ui to at port 8081, so that I can test the backend endpoints

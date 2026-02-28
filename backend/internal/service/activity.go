@@ -352,6 +352,11 @@ func (s *ActivityService) ListActivities(ctx context.Context, userID uuid.UUID) 
 	return s.repo.ListByUserID(ctx, userID)
 }
 
+// ListActivitiesPaginated retrieves a page of activities for a user
+func (s *ActivityService) ListActivitiesPaginated(ctx context.Context, userID uuid.UUID, page, limit int) ([]*model.Activity, int, error) {
+	return s.repo.ListByUserIDPaginated(ctx, userID, page, limit)
+}
+
 // GetActivityRecords retrieves all records for an activity
 func (s *ActivityService) GetActivityRecords(ctx context.Context, activityID uuid.UUID) ([]model.ActivityRecord, error) {
 	return s.repo.GetRecords(ctx, activityID)
