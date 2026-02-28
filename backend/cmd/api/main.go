@@ -67,6 +67,7 @@ func main() {
 		r.Get("/activities/{id}/power-curve", h.GetPowerCurve)
 		r.Get("/activities/{id}/elevation", h.GetElevationProfile)
 		r.Get("/activities/{id}/speed", h.GetSpeedProfile)
+		r.Get("/activities/{id}/hr-cadence", h.GetHRCadenceProfile)
 		r.Get("/activities/{id}/laps", h.GetLaps)
 	})
 

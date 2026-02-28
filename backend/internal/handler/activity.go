@@ -220,6 +220,26 @@ func (h *Handler) GetSpeedProfile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, points)
 }
 
+// GetHRCadenceProfile returns the heart rate and cadence profile for an activity
+func (h *Handler) GetHRCadenceProfile(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid activity ID")
+		return
+	}
+	if !h.HasDB() {
+		writeError(w, http.StatusServiceUnavailable, "Database not available")
+		return
+	}
+	points, err := h.activityService.GetHRCadenceProfile(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get HR/cadence profile")
+		return
+	}
+	writeJSON(w, http.StatusOK, points)
+}
+
 // GetLaps returns the laps for an activity
 func (h *Handler) GetLaps(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")

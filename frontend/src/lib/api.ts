@@ -119,6 +119,15 @@ class ApiClient {
     return response.json();
   }
 
+  async getHRCadenceProfile(id: string): Promise<{ distance: number; heartRate?: number; cadence?: number }[]> {
+    const response = await fetch(`${this.baseUrl}/api/activities/${id}/hr-cadence`);
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to fetch HR/cadence profile");
+    }
+    return response.json();
+  }
+
   async getLaps(id: string): Promise<{
     lapNumber: number;
     startTime: string;

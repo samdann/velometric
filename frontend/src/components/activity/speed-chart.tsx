@@ -70,7 +70,7 @@ export function SpeedChart({ activityId }: SpeedChartProps) {
   return (
     <div className="mt-6">
       <div className="mb-3 flex items-center gap-4">
-        <h3 className="text-sm font-medium text-foreground-muted">Speed Profile</h3>
+        <h3 className="text-sm font-medium text-foreground-muted">Speed &amp; Power</h3>
         <div className="flex items-center gap-3 text-xs text-foreground-muted">
           <span className="flex items-center gap-1">
             <span className="inline-block h-0.5 w-4 bg-[#3B82F6]" />

@@ -387,6 +387,37 @@ func (r *ActivityRepository) GetSpeedProfile(ctx context.Context, activityID uui
 	return points, nil
 }
 
+// GetHRCadenceProfile retrieves raw distance/heart_rate/cadence points for an activity
+func (r *ActivityRepository) GetHRCadenceProfile(ctx context.Context, activityID uuid.UUID) ([]model.HRCadencePoint, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT distance, heart_rate, cadence
+		FROM activity_records
+		WHERE activity_id = $1
+		  AND distance IS NOT NULL
+		  AND (heart_rate IS NOT NULL OR cadence IS NOT NULL)
+		ORDER BY timestamp ASC
+	`, activityID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get hr/cadence profile: %w", err)
+	}
+	defer rows.Close()
+
+	points := make([]model.HRCadencePoint, 0)
+	for rows.Next() {
+		var distMeters float64
+		var hr, cadence *int
+		if err := rows.Scan(&distMeters, &hr, &cadence); err != nil {
+			return nil, fmt.Errorf("failed to scan hr/cadence point: %w", err)
+		}
+		points = append(points, model.HRCadencePoint{
+			Distance:  distMeters / 1000.0,
+			HeartRate: hr,
+			Cadence:   cadence,
+		})
+	}
+	return points, nil
+}
+
 // GetPowerCurve retrieves the power curve for an activity
 func (r *ActivityRepository) GetPowerCurve(ctx context.Context, activityID uuid.UUID) ([]model.PowerCurvePoint, error) {
 	rows, err := r.pool.Query(ctx, `

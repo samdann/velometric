@@ -126,8 +126,15 @@ type ElevationPoint struct {
 // SpeedPoint represents a distance/speed/power point for the speed profile
 type SpeedPoint struct {
 	Distance float64  `json:"distance"`        // km
-	Speed    float64  `json:"speed"`            // km/h
+	Speed    float64  `json:"speed"`           // km/h
 	Power    *float64 `json:"power,omitempty"` // watts
+}
+
+// HRCadencePoint represents a distance/heart-rate/cadence point
+type HRCadencePoint struct {
+	Distance  float64 `json:"distance"`           // km
+	HeartRate *int    `json:"heartRate,omitempty"` // bpm
+	Cadence   *int    `json:"cadence,omitempty"`  // rpm
 }
 
 // ActivityEvent represents an event during an activity
