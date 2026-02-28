@@ -430,14 +430,24 @@ func (s *ActivityService) GetSpeedProfile(ctx context.Context, activityID uuid.U
 		if end > len(points) {
 			end = len(points)
 		}
-		var sum float64
+		var speedSum, powerSum float64
+		powerCount := 0
 		for j := start; j < end; j++ {
-			sum += points[j].Speed
+			speedSum += points[j].Speed
+			if points[j].Power != nil {
+				powerSum += *points[j].Power
+				powerCount++
+			}
 		}
-		smoothed[i] = model.SpeedPoint{
+		sp := model.SpeedPoint{
 			Distance: p.Distance,
-			Speed:    sum / float64(end-start),
+			Speed:    speedSum / float64(end-start),
 		}
+		if powerCount > 0 {
+			avg := powerSum / float64(powerCount)
+			sp.Power = &avg
+		}
+		smoothed[i] = sp
 	}
 
 	// Downsample to ~400 points
