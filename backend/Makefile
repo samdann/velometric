@@ -45,4 +45,4 @@ migrate-force:
 
 # Reset activity data (keeps users and zones)
 reset-activities:
-	docker-compose -f ../docker-compose.yml exec -T db psql -U postgres -d velometric -f - < scripts/reset-activities.sql
+	docker compose -f ../docker-compose.yml exec -T db psql -U postgres -d velometric -f - < scripts/reset-activities.sql
