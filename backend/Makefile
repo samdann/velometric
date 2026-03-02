@@ -1,7 +1,9 @@
 .PHONY: run build test migrate-up migrate-down migrate-create seed reset-activities
 
+-include .env
+
 # Database URL for local development
-DB_URL ?= postgres://postgres:postgres@localhost:5432/velometric?sslmode=disable
+DATABASE_URL ?= postgres://postgres:postgres@localhost:5432/velometric?sslmode=disable
 
 # Run the API server
 run:
@@ -17,15 +19,15 @@ test:
 
 # Run migrations up
 migrate-up:
-	migrate -path migrations -database "$(DB_URL)" up
+	migrate -path migrations -database "$(DATABASE_URL)" up
 
 # Rollback last migration
 migrate-down:
-	migrate -path migrations -database "$(DB_URL)" down 1
+	migrate -path migrations -database "$(DATABASE_URL)" down 1
 
 # Rollback all migrations
 migrate-reset:
-	migrate -path migrations -database "$(DB_URL)" down -all
+	migrate -path migrations -database "$(DATABASE_URL)" down -all
 
 # Create a new migration (usage: make migrate-create name=create_users)
 migrate-create:
@@ -37,11 +39,11 @@ seed:
 
 # Check migration version
 migrate-version:
-	migrate -path migrations -database "$(DB_URL)" version
+	migrate -path migrations -database "$(DATABASE_URL)" version
 
 # Force migration version (usage: make migrate-force version=1)
 migrate-force:
-	migrate -path migrations -database "$(DB_URL)" force $(version)
+	migrate -path migrations -database "$(DATABASE_URL)" force $(version)
 
 # Reset activity data (keeps users and zones)
 reset-activities:

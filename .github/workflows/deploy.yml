@@ -50,6 +50,16 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Run migrations
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/velometric/backend
+            DATABASE_URL="${{ secrets.DATABASE_URL }}" make migrate-up
+
       - name: Deploy to Hetzner
         uses: appleboy/ssh-action@v1
         with:
