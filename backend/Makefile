@@ -5,6 +5,20 @@
 # Database URL for local development
 DATABASE_URL ?= postgres://postgres:postgres@localhost:5432/velometric?sslmode=disable
 
+# Set to true on the server to run migrate via Docker network
+MIGRATE_VIA_DOCKER ?= false
+
+ifeq ($(MIGRATE_VIA_DOCKER),true)
+MIGRATE_CMD = docker run --rm \
+	--network velometric_default \
+	-v $(shell pwd)/migrations:/migrations \
+	migrate/migrate \
+	-path /migrations \
+	-database "postgres://postgres:postgres@db:5432/velometric?sslmode=disable"
+else
+MIGRATE_CMD = $(MIGRATE_CMD)
+endif
+
 # Run the API server
 run:
 	go run cmd/api/main.go
@@ -19,15 +33,15 @@ test:
 
 # Run migrations up
 migrate-up:
-	migrate -path migrations -database "$(DATABASE_URL)" up
+	$(MIGRATE_CMD) up
 
 # Rollback last migration
 migrate-down:
-	migrate -path migrations -database "$(DATABASE_URL)" down 1
+	$(MIGRATE_CMD) down 1
 
 # Rollback all migrations
 migrate-reset:
-	migrate -path migrations -database "$(DATABASE_URL)" down -all
+	$(MIGRATE_CMD) down -all
 
 # Create a new migration (usage: make migrate-create name=create_users)
 migrate-create:
@@ -39,11 +53,11 @@ seed:
 
 # Check migration version
 migrate-version:
-	migrate -path migrations -database "$(DATABASE_URL)" version
+	$(MIGRATE_CMD) version
 
 # Force migration version (usage: make migrate-force version=1)
 migrate-force:
-	migrate -path migrations -database "$(DATABASE_URL)" force $(version)
+	$(MIGRATE_CMD) force $(version)
 
 # Reset activity data (keeps users and zones)
 reset-activities:

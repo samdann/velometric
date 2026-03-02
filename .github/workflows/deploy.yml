@@ -58,7 +58,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /opt/velometric/backend
-            DATABASE_URL="${{ secrets.DATABASE_URL }}" make migrate-up
+            make migrate-up MIGRATE_VIA_DOCKER=true
 
       - name: Deploy to Hetzner
         uses: appleboy/ssh-action@v1
