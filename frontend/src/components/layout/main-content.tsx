@@ -17,6 +17,8 @@ export function MainContent({ children }: MainContentProps) {
         marginLeft: isCollapsed
           ? SIDEBAR_WIDTH.collapsed
           : SIDEBAR_WIDTH.expanded,
+        width: `calc(100vw - ${isCollapsed ? SIDEBAR_WIDTH.collapsed : SIDEBAR_WIDTH.expanded}px)`,
+        maxWidth: '900px',
       }}
     >
       {children}
