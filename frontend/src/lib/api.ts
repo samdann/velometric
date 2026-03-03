@@ -161,6 +161,15 @@ class ApiClient {
     return response.json();
   }
 
+  async getActivityRoute(id: string): Promise<{ lat: number; lon: number; distance?: number }[]> {
+    const response = await fetch(`${this.baseUrl}/api/activities/${id}/route`);
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to fetch route");
+    }
+    return response.json();
+  }
+
   async checkHealth(): Promise<{ status: string; database: string }> {
     const response = await fetch(`${this.baseUrl}/health`);
     return response.json();

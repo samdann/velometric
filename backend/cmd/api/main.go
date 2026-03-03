@@ -69,6 +69,7 @@ func main() {
 		r.Get("/activities/{id}/speed", h.GetSpeedProfile)
 		r.Get("/activities/{id}/hr-cadence", h.GetHRCadenceProfile)
 		r.Get("/activities/{id}/laps", h.GetLaps)
+		r.Get("/activities/{id}/route", h.GetRoute)
 	})
 
 	// Server setup

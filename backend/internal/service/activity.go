@@ -551,3 +551,27 @@ func generateActivityName(sport string, startTime time.Time) string {
 
 	return fmt.Sprintf("%s %s", timeOfDay, sportName)
 }
+
+
+// GetRoute retrieves a downsampled GPS route for an activity
+func (s *ActivityService) GetRoute(ctx context.Context, activityID uuid.UUID) ([]model.RoutePoint, error) {
+	points, err := s.repo.GetRoute(ctx, activityID)
+	if err != nil {
+		return nil, err
+	}
+	if len(points) == 0 {
+		return points, nil
+	}
+
+	const target = 1000
+	if len(points) <= target {
+		return points, nil
+	}
+	step := float64(len(points)) / float64(target)
+	result := make([]model.RoutePoint, 0, target)
+	for i := 0; i < target; i++ {
+		result = append(result, points[int(float64(i)*step)])
+	}
+	result = append(result, points[len(points)-1])
+	return result, nil
+}

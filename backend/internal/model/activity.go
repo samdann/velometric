@@ -137,6 +137,13 @@ type HRCadencePoint struct {
 	Cadence   *int    `json:"cadence,omitempty"`  // rpm
 }
 
+// RoutePoint represents a GPS coordinate point for the route map
+type RoutePoint struct {
+	Lat      float64  `json:"lat"`
+	Lon      float64  `json:"lon"`
+	Distance *float64 `json:"distance,omitempty"` // km
+}
+
 // ActivityEvent represents an event during an activity
 type ActivityEvent struct {
 	ID         uuid.UUID              `json:"id"`

@@ -458,6 +458,37 @@ func (r *ActivityRepository) GetHRCadenceProfile(ctx context.Context, activityID
 	return points, nil
 }
 
+// GetRoute retrieves GPS coordinates for an activity
+func (r *ActivityRepository) GetRoute(ctx context.Context, activityID uuid.UUID) ([]model.RoutePoint, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT lat, lon, distance
+		FROM activity_records
+		WHERE activity_id = $1
+		  AND lat IS NOT NULL
+		  AND lon IS NOT NULL
+		ORDER BY timestamp ASC
+	`, activityID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get route: %w", err)
+	}
+	defer rows.Close()
+
+	points := make([]model.RoutePoint, 0)
+	for rows.Next() {
+		var p model.RoutePoint
+		var distMeters *float64
+		if err := rows.Scan(&p.Lat, &p.Lon, &distMeters); err != nil {
+			return nil, fmt.Errorf("failed to scan route point: %w", err)
+		}
+		if distMeters != nil {
+			km := *distMeters / 1000.0
+			p.Distance = &km
+		}
+		points = append(points, p)
+	}
+	return points, nil
+}
+
 // GetPowerCurve retrieves the power curve for an activity
 func (r *ActivityRepository) GetPowerCurve(ctx context.Context, activityID uuid.UUID) ([]model.PowerCurvePoint, error) {
 	rows, err := r.pool.Query(ctx, `
