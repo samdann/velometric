@@ -70,6 +70,13 @@ func main() {
 		r.Get("/activities/{id}/hr-cadence", h.GetHRCadenceProfile)
 		r.Get("/activities/{id}/laps", h.GetLaps)
 		r.Get("/activities/{id}/route", h.GetRoute)
+
+		r.Get("/user/profile", h.GetProfile)
+		r.Put("/user/profile", h.UpdateProfile)
+		r.Get("/user/hr-zones", h.GetHRZones)
+		r.Put("/user/hr-zones", h.SaveHRZones)
+		r.Get("/user/power-zones", h.GetPowerZones)
+		r.Put("/user/power-zones", h.SavePowerZones)
 	})
 
 	// Server setup

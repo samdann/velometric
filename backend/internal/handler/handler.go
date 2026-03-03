@@ -10,6 +10,7 @@ import (
 type Handler struct {
 	db              *database.DB
 	activityService *service.ActivityService
+	userService     *service.UserService
 }
 
 // New creates a new Handler with dependencies
@@ -21,6 +22,8 @@ func New(db *database.DB) *Handler {
 	if db != nil {
 		activityRepo := repository.NewActivityRepository(db.Pool)
 		h.activityService = service.NewActivityService(activityRepo)
+		userRepo := repository.NewUserRepository(db.Pool)
+		h.userService = service.NewUserService(userRepo)
 	}
 
 	return h

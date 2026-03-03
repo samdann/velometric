@@ -40,6 +40,41 @@ export interface ApiError {
   error: string;
 }
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  ftp?: number;
+  max_hr?: number;
+  weight?: number;
+}
+
+export interface HRZone {
+  zone_number: number;
+  name: string;
+  min_percentage: number;
+  max_percentage: number | null;
+  color: string;
+}
+
+export interface HRZonesResponse {
+  max_hr: number;
+  zones: HRZone[];
+}
+
+export interface PowerZone {
+  zone_number: number;
+  name: string;
+  min_percentage: number;
+  max_percentage: number | null;
+  color: string;
+}
+
+export interface PowerZonesResponse {
+  ftp: number;
+  zones: PowerZone[];
+}
+
 class ApiClient {
   private baseUrl: string;
 
@@ -172,6 +207,72 @@ class ApiClient {
 
   async checkHealth(): Promise<{ status: string; database: string }> {
     const response = await fetch(`${this.baseUrl}/health`);
+    return response.json();
+  }
+
+  async getUserProfile(): Promise<UserProfile> {
+    const response = await fetch(`${this.baseUrl}/api/user/profile`);
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to fetch profile");
+    }
+    return response.json();
+  }
+
+  async updateUserProfile(data: { name: string; email: string; weight?: number }): Promise<UserProfile> {
+    const response = await fetch(`${this.baseUrl}/api/user/profile`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to update profile");
+    }
+    return response.json();
+  }
+
+  async getHRZones(): Promise<HRZonesResponse> {
+    const response = await fetch(`${this.baseUrl}/api/user/hr-zones`);
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to fetch HR zones");
+    }
+    return response.json();
+  }
+
+  async saveHRZones(maxHR: number, boundaries: number[]): Promise<HRZonesResponse> {
+    const response = await fetch(`${this.baseUrl}/api/user/hr-zones`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ max_hr: maxHR, boundaries }),
+    });
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to save HR zones");
+    }
+    return response.json();
+  }
+
+  async getPowerZones(): Promise<PowerZonesResponse> {
+    const response = await fetch(`${this.baseUrl}/api/user/power-zones`);
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to fetch power zones");
+    }
+    return response.json();
+  }
+
+  async savePowerZones(ftp: number, boundaries: number[]): Promise<PowerZonesResponse> {
+    const response = await fetch(`${this.baseUrl}/api/user/power-zones`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ftp, boundaries }),
+    });
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to save power zones");
+    }
     return response.json();
   }
 }
