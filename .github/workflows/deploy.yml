@@ -68,6 +68,7 @@ jobs:
           script: |
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u samdann --password-stdin
             cd /opt/velometric
+            rm -f docker-compose.yml
             docker compose -f docker-compose.server.yml pull frontend backend
             docker compose -f docker-compose.server.yml up -d --no-deps frontend backend
             docker image prune -f
