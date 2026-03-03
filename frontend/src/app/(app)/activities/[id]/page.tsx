@@ -59,7 +59,7 @@ function StatCard({ label, value, unit, color }: StatCardProps) {
   return (
     <div className="rounded-lg border border-border bg-background-subtle p-4">
       <p className="truncate text-xs text-foreground-muted">{label}</p>
-      <p className={`mt-1 font-mono text-lg ${color || "text-foreground"}`}>
+      <p className={`mt-1 font-mono text-base ${color || "text-foreground"}`}>
         {value}
         {unit && <span className="ml-1 text-sm text-foreground-muted">{unit}</span>}
       </p>
