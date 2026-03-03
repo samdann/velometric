@@ -295,7 +295,7 @@ export function PowerTab({ activityId, activity }: PowerTabProps) {
                       width={52}
                     />
                     <Tooltip
-                      contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid #333", borderRadius: "6px", fontSize: 12 }}
+                      contentStyle={{ backgroundColor: "var(--color-background-subtle)", border: "1px solid var(--color-border)", borderRadius: "6px", fontSize: 12, color: "var(--color-foreground)" }}
                       labelFormatter={(i) => formatDuration(CHART_DURATIONS[Number(i)])}
                       formatter={(value: number | undefined) => [`${value ?? "—"}w`, "Best Power"]}
                     />

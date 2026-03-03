@@ -2,16 +2,16 @@
 
 :root {
   /* Background */
-  --background: #0C0C0E;
-  --background-subtle: #141416;
+  --background: #F8F8F9;
+  --background-subtle: #EFEFEF;
 
   /* Foreground */
-  --foreground: #F4F4F5;
-  --foreground-muted: #A1A1AA;
+  --foreground: #18181B;
+  --foreground-muted: #3b3b3d;
 
   /* Primary accent */
-  --primary: #F97316;
-  --primary-hover: #EA580C;
+  --primary: #EA580C;
+  --primary-hover: #C2410C;
 
   /* Metric colors */
   --power: #F97316;
@@ -30,8 +30,8 @@
   --zone-7: #DC2626;
 
   /* Border */
-  --border: #27272A;
-  --border-hover: #3F3F46;
+  --border: #D4D4D8;
+  --border-hover: #A1A1AA;
 }
 
 @theme inline {

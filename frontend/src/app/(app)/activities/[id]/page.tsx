@@ -58,8 +58,8 @@ interface StatCardProps {
 function StatCard({ label, value, unit, color }: StatCardProps) {
   return (
     <div className="rounded-lg border border-border bg-background-subtle p-4">
-      <p className="text-xs text-foreground-muted">{label}</p>
-      <p className={`mt-1 font-mono text-2xl ${color || "text-foreground"}`}>
+      <p className="truncate text-xs text-foreground-muted">{label}</p>
+      <p className={`mt-1 font-mono text-lg ${color || "text-foreground"}`}>
         {value}
         {unit && <span className="ml-1 text-sm text-foreground-muted">{unit}</span>}
       </p>
@@ -114,7 +114,7 @@ export default function ActivityDetailPage() {
         title={activity.name}
         description={formatDate(activity.startTime)}
       />
-      <div className="p-6">
+      <div className="py-2 px-6">
         <ActivityTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
         {/* Tab Content */}
