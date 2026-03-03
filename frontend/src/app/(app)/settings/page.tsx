@@ -136,7 +136,7 @@ export default function SettingsPage() {
         {/* Power Zones */}
         <SectionCard title="Power Zones">
           <p className="text-xs text-foreground-muted">
-            Drag the handles to set zone boundaries. The white marker shows your FTP. Zone 7 is open-ended.
+            Zones are calculated automatically from your FTP using standard Coggan percentages.
           </p>
           <PowerZoneSlider
             initialFTP={powerData.ftp}
