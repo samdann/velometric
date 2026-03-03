@@ -124,9 +124,9 @@ export function MapTab({ activityId }: MapTabProps) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function handleChartMouseMove(state: any) {
-    if (!state?.activePayload?.length) return;
-    const distance: number = state.activePayload[0]?.payload?.distance;
-    if (distance == null) return;
+    if (!state?.isTooltipActive) return;
+    const distance = Number(state.activeLabel);
+    if (isNaN(distance)) return;
     const point = findClosestPoint(route, distance);
     if (point) setMarker({ lat: point.lat, lon: point.lon });
   }
@@ -141,7 +141,7 @@ export function MapTab({ activityId }: MapTabProps) {
       <div className="overflow-hidden rounded-lg border border-border" style={{ height: 460 }}>
         <Map
           ref={mapRef}
-          mapStyle="https://tiles.openfreemap.org/styles/positron"
+          mapStyle="https://tiles.openfreemap.org/styles/liberty"
           initialViewState={{ bounds, fitBoundsOptions: { padding: 40 } }}
           style={{ width: "100%", height: "100%" }}
         >
@@ -152,12 +152,10 @@ export function MapTab({ activityId }: MapTabProps) {
             <Marker longitude={marker.lon} latitude={marker.lat} anchor="center">
               <div
                 style={{
-                  width: 18,
-                  height: 18,
+                  width: 12,
+                  height: 12,
                   borderRadius: "50%",
                   backgroundColor: "#3B82F6",
-                  border: "3px solid white",
-                  boxShadow: "0 0 0 3px #3B82F6, 0 2px 8px rgba(0,0,0,0.4)",
                 }}
               />
             </Marker>
