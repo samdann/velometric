@@ -19,9 +19,11 @@ interface DataTabProps {
 
 function formatTime(timestamp: string, startTime: string): string {
   const elapsed = (new Date(timestamp).getTime() - new Date(startTime).getTime()) / 1000;
-  const m = Math.floor(elapsed / 60);
+  const h = Math.floor(elapsed / 3600);
+  const m = Math.floor((elapsed % 3600) / 60);
   const s = Math.floor(elapsed % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
+  if (h > 0) return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
 export function DataTab({ activityId }: DataTabProps) {
