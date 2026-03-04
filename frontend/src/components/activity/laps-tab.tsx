@@ -39,6 +39,115 @@ function formatSpeed(mps: number): string {
 }
 
 // Shades of red matching the HR zones palette
+function LapOverviewChart({ laps, activityId }: { laps: Lap[]; activityId: string }) {
+  const [elevation, setElevation] = useState<{ distance: number; altitude: number }[]>([]);
+  const [hoveredLap, setHoveredLap] = useState<number | null>(null);
+
+  useEffect(() => {
+    api.getElevationProfile(activityId).then(setElevation).catch(() => {});
+  }, [activityId]);
+
+  const totalDuration = laps.reduce((s, l) => s + l.duration, 0);
+  const maxPower = Math.max(...laps.map((l) => l.avgPower ?? 0));
+  if (totalDuration === 0 || maxPower === 0) return null;
+
+  // Elevation SVG path stretched across full width (decorative background)
+  let elevationPath = "";
+  if (elevation.length > 1) {
+    const minAlt = Math.min(...elevation.map((e) => e.altitude));
+    const maxAlt = Math.max(...elevation.map((e) => e.altitude));
+    const altRange = maxAlt - minAlt || 1;
+    // Elevation fills full chart height — highest point reaches the top
+    const yTop = 0;
+    const yBottom = 100;
+    const pts = elevation.map((e, i) => {
+      const x = (i / (elevation.length - 1)) * 100;
+      const y = yBottom - ((e.altitude - minAlt) / altRange) * (yBottom - yTop);
+      return `${x.toFixed(1)} ${y.toFixed(1)}`;
+    });
+    elevationPath = `M0 ${yBottom} L${pts.join(" L")} L100 ${yBottom} Z`;
+  }
+
+  // Bars — time-based widths, power-based heights
+  let cumTime = 0;
+  const bars = laps.map((lap) => {
+    const xPct = (cumTime / totalDuration) * 100;
+    const wPct = (lap.duration / totalDuration) * 100;
+    const power = lap.avgPower ?? 0;
+    const hPct = (power / maxPower) * 100;
+    const opacity = 0.28 + (power / maxPower) * 0.62;
+    cumTime += lap.duration;
+    return { xPct, wPct, hPct, power, opacity, lap };
+  });
+
+  return (
+    <div className="mb-6">
+      <div
+        className="relative rounded-lg border border-border bg-background-subtle overflow-visible"
+        style={{ height: 120 }}
+      >
+        {/* Elevation background */}
+        {elevationPath && (
+          <svg
+            className="absolute inset-[3px] w-[calc(100%-6px)] h-[calc(100%-6px)] rounded-lg"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+          >
+            <path d={elevationPath} fill="var(--color-foreground-muted)" fillOpacity={0.08} />
+          </svg>
+        )}
+
+        {/* Lap bars */}
+        <div className="absolute inset-[3px] flex items-end">
+          {bars.map(({ xPct: _x, wPct, hPct, power, opacity, lap }) => {
+            const isHovered = hoveredLap === lap.lapNumber;
+            return (
+              <div
+                key={lap.lapNumber}
+                className="relative flex-shrink-0 h-full"
+                style={{ width: `${wPct}%` }}
+                onMouseEnter={() => setHoveredLap(lap.lapNumber)}
+                onMouseLeave={() => setHoveredLap(null)}
+              >
+                {/* Bar fill */}
+                <div
+                  className="absolute bottom-0 w-full transition-opacity duration-150 rounded-sm"
+                  style={{
+                    height: `${hPct}%`,
+                    backgroundColor: "#EF4444",
+                    opacity: isHovered ? Math.min(opacity + 0.15, 1) : opacity,
+                    borderRight: "2px solid var(--color-background-subtle)",
+                  }}
+                />
+
+                {/* Tooltip */}
+                {isHovered && (
+                  <div
+                    className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-20 rounded border border-border bg-background-subtle px-3 py-2 shadow-lg pointer-events-none"
+                    style={{ whiteSpace: "nowrap", fontSize: 12 }}
+                  >
+                    <p style={{ color: "var(--color-foreground-muted)", marginBottom: 4 }}>
+                      Lap {lap.lapNumber}
+                    </p>
+                    <p style={{ color: "var(--color-foreground)" }}>
+                      Time: <span style={{ color: "var(--color-foreground)" }}>{formatDuration(lap.duration)}</span>
+                    </p>
+                    {power > 0 && (
+                      <p style={{ color: "#F97316", marginTop: 2 }}>
+                        Power: <span style={{ color: "var(--color-foreground)" }}>{power} W</span>
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Opacity scales from 0.25 (near 0%) to 1.0 (at 120%+)
 function effortStyle(pct: number): { background: string; opacity: number } {
   const capped = Math.min(pct, 120);
@@ -130,6 +239,7 @@ export function LapsTab({ activityId }: LapsTabProps) {
 
   return (
     <div className="mt-6">
+      <LapOverviewChart laps={laps} activityId={activityId} />
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full min-w-[900px]">
           <thead className="bg-background-subtle">
