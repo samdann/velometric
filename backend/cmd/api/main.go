@@ -70,6 +70,7 @@ func main() {
 		r.Get("/activities/{id}/hr-cadence", h.GetHRCadenceProfile)
 		r.Get("/activities/{id}/laps", h.GetLaps)
 		r.Get("/activities/{id}/route", h.GetRoute)
+		r.Get("/activities/{id}/hr-zone-distribution", h.GetHRZoneDistribution)
 
 		r.Get("/user/profile", h.GetProfile)
 		r.Put("/user/profile", h.UpdateProfile)

@@ -309,6 +309,43 @@ func (h *Handler) GetLaps(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, laps)
 }
 
+func (h *Handler) GetHRZoneDistribution(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid activity ID")
+		return
+	}
+
+	if !h.HasDB() {
+		writeError(w, http.StatusServiceUnavailable, "Database not available")
+		return
+	}
+
+	maxHR, zones, err := h.userService.GetHRZones(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get HR zones")
+		return
+	}
+	if maxHR <= 0 || len(zones) == 0 {
+		writeJSON(w, http.StatusOK, []interface{}{})
+		return
+	}
+
+	distribution, err := h.activityService.ComputeHRZoneDistribution(r.Context(), id, maxHR, zones)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to compute HR zone distribution")
+		return
+	}
+
+	if distribution == nil {
+		writeJSON(w, http.StatusOK, []interface{}{})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, distribution)
+}
+
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	b, err := json.Marshal(data)
 	if err != nil {

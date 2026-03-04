@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -507,6 +508,36 @@ func (r *ActivityRepository) GetPowerCurve(ctx context.Context, activityID uuid.
 		var p model.PowerCurvePoint
 		if err := rows.Scan(&p.ActivityID, &p.DurationSeconds, &p.BestPower, &p.AvgHeartRate); err != nil {
 			return nil, fmt.Errorf("failed to scan power curve point: %w", err)
+		}
+		points = append(points, p)
+	}
+	return points, nil
+}
+
+// HRTimePoint is a lightweight timestamp + heart_rate pair for zone computation
+type HRTimePoint struct {
+	Timestamp time.Time
+	HeartRate int
+}
+
+// GetHRTimeSeries retrieves ordered timestamp+heart_rate pairs for an activity
+func (r *ActivityRepository) GetHRTimeSeries(ctx context.Context, activityID uuid.UUID) ([]HRTimePoint, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT timestamp, heart_rate
+		FROM activity_records
+		WHERE activity_id = $1 AND heart_rate IS NOT NULL
+		ORDER BY timestamp ASC
+	`, activityID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get HR time series: %w", err)
+	}
+	defer rows.Close()
+
+	var points []HRTimePoint
+	for rows.Next() {
+		var p HRTimePoint
+		if err := rows.Scan(&p.Timestamp, &p.HeartRate); err != nil {
+			return nil, fmt.Errorf("failed to scan HR time point: %w", err)
 		}
 		points = append(points, p)
 	}

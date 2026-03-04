@@ -575,3 +575,70 @@ func (s *ActivityService) GetRoute(ctx context.Context, activityID uuid.UUID) ([
 	result = append(result, points[len(points)-1])
 	return result, nil
 }
+
+// ComputeHRZoneDistribution computes time spent in each HR zone for an activity.
+// maxHR is the user's maximum heart rate; zones are sorted by zone_number ascending.
+func (s *ActivityService) ComputeHRZoneDistribution(ctx context.Context, activityID uuid.UUID, maxHR int, zones []model.HRZone) ([]model.HRZoneDistributionPoint, error) {
+	pts, err := s.repo.GetHRTimeSeries(ctx, activityID)
+	if err != nil {
+		return nil, err
+	}
+	if len(pts) < 2 || maxHR <= 0 || len(zones) == 0 {
+		return nil, nil
+	}
+
+	// Accumulate seconds per zone index
+	zoneSecs := make([]float64, len(zones))
+	totalSecs := 0.0
+
+	for i := 1; i < len(pts); i++ {
+		dt := pts[i].Timestamp.Sub(pts[i-1].Timestamp).Seconds()
+		// Ignore gaps >60 s (pauses)
+		if dt <= 0 || dt > 60 {
+			continue
+		}
+		hrPct := float64(pts[i-1].HeartRate) / float64(maxHR) * 100.0
+		zoneIdx := classifyHRZone(hrPct, zones)
+		if zoneIdx >= 0 {
+			zoneSecs[zoneIdx] += dt
+			totalSecs += dt
+		}
+	}
+
+	result := make([]model.HRZoneDistributionPoint, len(zones))
+	for i, z := range zones {
+		minBPM := int(z.MinPercentage / 100.0 * float64(maxHR))
+		var maxBPM *int
+		if z.MaxPercentage != nil {
+			v := int(*z.MaxPercentage / 100.0 * float64(maxHR))
+			maxBPM = &v
+		}
+		pct := 0.0
+		if totalSecs > 0 {
+			pct = zoneSecs[i] / totalSecs * 100.0
+		}
+		result[i] = model.HRZoneDistributionPoint{
+			ZoneNumber: z.ZoneNumber,
+			Name:       z.Name,
+			Color:      z.Color,
+			MinBPM:     minBPM,
+			MaxBPM:     maxBPM,
+			Seconds:    zoneSecs[i],
+			Percentage: pct,
+		}
+	}
+	return result, nil
+}
+
+func classifyHRZone(hrPct float64, zones []model.HRZone) int {
+	for i, z := range zones {
+		if hrPct < z.MinPercentage {
+			continue
+		}
+		if z.MaxPercentage == nil || hrPct < *z.MaxPercentage {
+			return i
+		}
+	}
+	// If above all zones, assign to last zone
+	return len(zones) - 1
+}

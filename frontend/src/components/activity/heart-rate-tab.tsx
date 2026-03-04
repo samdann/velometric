@@ -1,6 +1,8 @@
 "use client";
 
-import { Activity } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { Activity, HRZoneDistributionPoint, api } from "@/lib/api";
+import { HRZonesChart } from "./hr-zones-chart";
 
 interface HeartRateTabProps {
   activity: Activity;
@@ -8,6 +10,12 @@ interface HeartRateTabProps {
 
 export function HeartRateTab({ activity }: HeartRateTabProps) {
   const hasHRData = activity.avgHeartRate || activity.maxHeartRate;
+  const [distribution, setDistribution] = useState<HRZoneDistributionPoint[] | null>(null);
+
+  useEffect(() => {
+    if (!hasHRData) return;
+    api.getHRZoneDistribution(activity.id).then(setDistribution).catch(() => setDistribution([]));
+  }, [activity.id, hasHRData]);
 
   if (!hasHRData) {
     return (
@@ -39,11 +47,14 @@ export function HeartRateTab({ activity }: HeartRateTabProps) {
         )}
       </div>
 
-      {/* Placeholder for HR zones chart */}
-      <div className="rounded-lg border border-border bg-background-subtle p-6">
-        <h3 className="mb-3 text-sm font-medium text-foreground-muted">Heart Rate Zones</h3>
-        <p className="text-sm text-foreground-muted">Zone distribution chart coming soon...</p>
-      </div>
+      {/* HR Zones Distribution */}
+      {distribution === null ? (
+        <div className="rounded-lg border border-border bg-background-subtle p-6">
+          <div className="h-32 animate-pulse rounded bg-background" />
+        </div>
+      ) : (
+        <HRZonesChart distribution={distribution} />
+      )}
     </div>
   );
 }

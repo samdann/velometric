@@ -62,6 +62,16 @@ export interface HRZonesResponse {
   zones: HRZone[];
 }
 
+export interface HRZoneDistributionPoint {
+  zone_number: number;
+  name: string;
+  color: string;
+  min_bpm: number;
+  max_bpm: number | null;
+  seconds: number;
+  percentage: number;
+}
+
 export interface PowerZone {
   zone_number: number;
   name: string;
@@ -228,6 +238,15 @@ class ApiClient {
     if (!response.ok) {
       const error: ApiError = await response.json();
       throw new Error(error.error || "Failed to update profile");
+    }
+    return response.json();
+  }
+
+  async getHRZoneDistribution(activityId: string): Promise<HRZoneDistributionPoint[]> {
+    const response = await fetch(`${this.baseUrl}/api/activities/${activityId}/hr-zone-distribution`);
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to fetch HR zone distribution");
     }
     return response.json();
   }

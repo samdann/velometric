@@ -152,3 +152,14 @@ type ActivityEvent struct {
 	EventType  string                 `json:"eventType"`
 	Data       map[string]interface{} `json:"data,omitempty"`
 }
+
+// HRZoneDistributionPoint is the time-in-zone data for one HR zone
+type HRZoneDistributionPoint struct {
+	ZoneNumber int      `json:"zone_number"`
+	Name       string   `json:"name"`
+	Color      string   `json:"color"`
+	MinBPM     int      `json:"min_bpm"`
+	MaxBPM     *int     `json:"max_bpm"`
+	Seconds    float64  `json:"seconds"`
+	Percentage float64  `json:"percentage"`
+}
