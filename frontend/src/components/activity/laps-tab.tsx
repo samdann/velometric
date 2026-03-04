@@ -75,7 +75,7 @@ function LapOverviewChart({ laps, activityId }: { laps: Lap[]; activityId: strin
     const wPct = (lap.duration / totalDuration) * 100;
     const power = lap.avgPower ?? 0;
     const hPct = (power / maxPower) * 100;
-    const opacity = 0.28 + (power / maxPower) * 0.62;
+    const opacity = 0.2 + (power / maxPower) * 0.4;
     cumTime += lap.duration;
     return { xPct, wPct, hPct, power, opacity, lap };
   });
