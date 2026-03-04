@@ -231,14 +231,14 @@ export function PowerTab({ activityId, activity }: PowerTabProps) {
                 <table className="w-full">
                   <thead className="bg-background-subtle">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-foreground-muted">
+                      <th className="px-4 py-2 text-left font-medium text-foreground-muted">
                         Duration
                       </th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-foreground-muted">
+                      <th className="px-4 py-2 text-right font-medium text-foreground-muted">
                         Best Power
                       </th>
                       {hasHR && (
-                        <th className="px-4 py-2 text-right text-xs font-medium text-foreground-muted">
+                        <th className="px-4 py-2 text-right font-medium text-foreground-muted">
                           Avg HR
                         </th>
                       )}
@@ -247,14 +247,14 @@ export function PowerTab({ activityId, activity }: PowerTabProps) {
                   <tbody className="divide-y divide-border">
                     {tableRows.map((point) => (
                       <tr key={point.durationSeconds} className="hover:bg-background-subtle/50">
-                        <td className="px-4 py-2 font-mono text-sm">
+                        <td className="px-4 py-2 font-mono">
                           {DURATION_LABELS[point.durationSeconds]}
                         </td>
-                        <td className="px-4 py-2 text-right font-mono text-sm text-power">
+                        <td className="px-4 py-2 text-right font-mono text-power">
                           {point.bestPower}w
                         </td>
                         {hasHR && (
-                          <td className="px-4 py-2 text-right font-mono text-sm text-heart-rate">
+                          <td className="px-4 py-2 text-right font-mono text-heart-rate">
                             {point.avgHeartRate != null ? `${point.avgHeartRate} bpm` : "—"}
                           </td>
                         )}

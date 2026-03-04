@@ -39,17 +39,11 @@ function formatSpeed(mps: number): string {
 }
 
 // Shades of red matching the HR zones palette
-const EFFORT_SHADES = [
-  "#FECACA", // 0–20%
-  "#FCA5A5", // 20–40%
-  "#F87171", // 40–60%
-  "#EF4444", // 60–80%
-  "#DC2626", // 80–100%+
-];
-
-function effortColor(pct: number): string {
-  const idx = Math.min(Math.floor(pct / 20), EFFORT_SHADES.length - 1);
-  return EFFORT_SHADES[idx];
+// Opacity scales from 0.25 (near 0%) to 1.0 (at 120%+)
+function effortStyle(pct: number): { background: string; opacity: number } {
+  const capped = Math.min(pct, 120);
+  const opacity = 0.25 + (capped / 120) * 0.75;
+  return { background: "#EF4444", opacity };
 }
 
 function EffortBar({ power, ftp }: { power?: number; ftp?: number }) {
@@ -60,9 +54,8 @@ function EffortBar({ power, ftp }: { power?: number; ftp?: number }) {
   }
 
   const ftpPct = (power / ftp) * 100;
-  const color = effortColor(ftpPct);
-  // Cap bar fill at 150% FTP = 100% width
-  const barWidth = Math.min((ftpPct / 150) * 100, 100);
+  const { background, opacity } = effortStyle(ftpPct);
+  const barWidth = Math.min((ftpPct / 120) * 100, 100);
 
   return (
     <div
@@ -70,10 +63,10 @@ function EffortBar({ power, ftp }: { power?: number; ftp?: number }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="h-5 w-28 overflow-hidden rounded-sm bg-background">
+      <div className="w-28 overflow-hidden rounded-full bg-background" style={{ height: 4 }}>
         <div
-          className="h-full rounded-sm transition-all duration-300"
-          style={{ width: `${barWidth}%`, backgroundColor: color }}
+          className="h-full rounded-full transition-all duration-300"
+          style={{ width: `${barWidth}%`, background, opacity }}
         />
       </div>
       {hovered && (
@@ -83,7 +76,7 @@ function EffortBar({ power, ftp }: { power?: number; ftp?: number }) {
         >
           <span className="font-mono font-semibold text-foreground">{power} W</span>
           <span className="mx-1.5 text-foreground-muted">·</span>
-          <span className="font-mono font-semibold" style={{ color }}>
+          <span className="font-mono font-semibold" style={{ color: "#EF4444", opacity: 1 }}>
             {ftpPct.toFixed(0)}% FTP
           </span>
         </div>
@@ -141,42 +134,42 @@ export function LapsTab({ activityId }: LapsTabProps) {
         <table className="w-full min-w-[900px]">
           <thead className="bg-background-subtle">
             <tr>
-              <th className="px-3 py-2.5 text-left text-xs font-medium text-foreground-muted">Lap</th>
-              <th className="px-3 py-2.5 text-right text-xs font-medium text-foreground-muted">Distance</th>
-              <th className="px-3 py-2.5 text-right text-xs font-medium text-foreground-muted">Time</th>
-              <th className="px-3 py-2.5 text-right text-xs font-medium text-foreground-muted">Elevation</th>
-              <th className="px-3 py-2.5 text-right text-xs font-medium text-foreground-muted">Speed</th>
-              <th className="px-3 py-2.5 text-right text-xs font-medium text-foreground-muted">HR</th>
-              <th className="px-3 py-2.5 text-right text-xs font-medium text-foreground-muted">Cad</th>
-              <th className="px-3 py-2.5 text-right text-xs font-medium text-foreground-muted">Power</th>
-              <th className="px-3 py-2.5 text-left text-xs font-medium text-foreground-muted">Effort Intensity</th>
+              <th className="px-3 py-2.5 text-left font-medium text-foreground-muted">Lap</th>
+              <th className="px-3 py-2.5 text-right font-medium text-foreground-muted">Distance</th>
+              <th className="px-3 py-2.5 text-right font-medium text-foreground-muted">Time</th>
+              <th className="px-3 py-2.5 text-right font-medium text-foreground-muted">Elevation</th>
+              <th className="px-3 py-2.5 text-right font-medium text-foreground-muted">Speed</th>
+              <th className="px-3 py-2.5 text-right font-medium text-foreground-muted">HR</th>
+              <th className="px-3 py-2.5 text-right font-medium text-foreground-muted">Cad</th>
+              <th className="px-3 py-2.5 text-right font-medium text-foreground-muted">Power</th>
+              <th className="px-3 py-2.5 text-left font-medium text-foreground-muted">Effort Intensity</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {laps.map((lap) => (
               <tr key={lap.lapNumber} className="hover:bg-background-subtle/50">
-                <td className="px-3 py-2 font-mono text-sm font-medium text-foreground">
+                <td className="px-3 py-2 font-mono font-medium text-foreground">
                   {lap.lapNumber}
                 </td>
-                <td className="px-3 py-2 text-right font-mono text-sm text-foreground">
+                <td className="px-3 py-2 text-right font-mono text-foreground">
                   {formatDistance(lap.distance)}
                 </td>
-                <td className="px-3 py-2 text-right font-mono text-sm text-foreground">
+                <td className="px-3 py-2 text-right font-mono text-foreground">
                   {formatDuration(lap.duration)}
                 </td>
-                <td className="px-3 py-2 text-right font-mono text-sm text-elevation">
+                <td className="px-3 py-2 text-right font-mono text-elevation">
                   {lap.ascent ? `+${lap.ascent.toFixed(0)} m` : "—"}
                 </td>
-                <td className="px-3 py-2 text-right font-mono text-sm text-speed">
+                <td className="px-3 py-2 text-right font-mono text-speed">
                   {lap.avgSpeed ? formatSpeed(lap.avgSpeed) : "—"}
                 </td>
-                <td className="px-3 py-2 text-right font-mono text-sm text-heart-rate">
+                <td className="px-3 py-2 text-right font-mono text-heart-rate">
                   {lap.avgHeartRate ?? "—"}
                 </td>
-                <td className="px-3 py-2 text-right font-mono text-sm text-cadence">
+                <td className="px-3 py-2 text-right font-mono text-cadence">
                   {lap.avgCadence ?? "—"}
                 </td>
-                <td className="px-3 py-2 text-right font-mono text-sm text-power">
+                <td className="px-3 py-2 text-right font-mono text-power">
                   {lap.avgPower ? `${lap.avgPower} W` : "—"}
                 </td>
                 <td className="px-3 py-2">

@@ -64,3 +64,12 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+/* ── Table defaults ──────────────────────────────────────────────── */
+table th {
+  font-size: 12px; /* column headers */
+}
+
+table td {
+  font-size: 13px; /* cell data */
+}

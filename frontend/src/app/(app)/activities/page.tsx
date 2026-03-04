@@ -203,16 +203,16 @@ export default function ActivitiesPage() {
         {(loading || activities.length > 0) && (
           <>
             <div className="rounded-lg border border-border overflow-hidden">
-              <table className="w-full text-sm">
+              <table className="w-full">
                 <thead>
                   <tr className="border-b border-border bg-background-subtle">
-                    <th className="px-4 py-3 text-left text-xs font-medium text-foreground-muted uppercase tracking-wider">Sport</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-foreground-muted uppercase tracking-wider">Title</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-foreground-muted uppercase tracking-wider">Date</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-foreground-muted uppercase tracking-wider">Distance</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-foreground-muted uppercase tracking-wider">Time</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-foreground-muted uppercase tracking-wider">Elevation</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-foreground-muted uppercase tracking-wider">Avg Power</th>
+                    <th className="px-4 py-3 text-left font-medium text-foreground-muted uppercase tracking-wider">Sport</th>
+                    <th className="px-4 py-3 text-left font-medium text-foreground-muted uppercase tracking-wider">Title</th>
+                    <th className="px-4 py-3 text-left font-medium text-foreground-muted uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-3 text-right font-medium text-foreground-muted uppercase tracking-wider">Distance</th>
+                    <th className="px-4 py-3 text-right font-medium text-foreground-muted uppercase tracking-wider">Time</th>
+                    <th className="px-4 py-3 text-right font-medium text-foreground-muted uppercase tracking-wider">Elevation</th>
+                    <th className="px-4 py-3 text-right font-medium text-foreground-muted uppercase tracking-wider">Avg Power</th>
                     <th className="px-4 py-3 w-10" />
                   </tr>
                 </thead>
