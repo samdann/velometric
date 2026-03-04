@@ -52,10 +52,11 @@ export function HRZonesChart({ distribution }: HRZonesChartProps) {
   const total = distribution.length;
 
   return (
-    <div className="rounded-lg border border-border bg-background-subtle p-6">
-      <h3 className="mb-5 text-sm font-medium text-foreground-muted">
+    <div>
+      <h3 className="mb-3 text-sm font-medium text-foreground-muted">
         Heart Rate Zone Distribution
       </h3>
+      <div className="rounded-lg border border-border bg-background-subtle p-6">
       <div className="space-y-2">
         {sorted.map((zone) => {
           const color = zoneColor(zone.zone_number, total);
@@ -107,6 +108,7 @@ export function HRZonesChart({ distribution }: HRZonesChartProps) {
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );
