@@ -153,7 +153,7 @@ class ApiClient {
     return response.json();
   }
 
-  async getElevationProfile(id: string): Promise<{ distance: number; altitude: number }[]> {
+  async getElevationProfile(id: string): Promise<{ distance: number; altitude: number; temperature?: number }[]> {
     const response = await fetch(`${this.baseUrl}/api/activities/${id}/elevation`);
     if (!response.ok) {
       const error: ApiError = await response.json();
@@ -240,6 +240,16 @@ class ApiClient {
       throw new Error(error.error || "Failed to update profile");
     }
     return response.json();
+  }
+
+  async deleteActivity(id: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/activities/${id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to delete activity");
+    }
   }
 
   async getHRZoneDistribution(activityId: string): Promise<HRZoneDistributionPoint[]> {

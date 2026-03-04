@@ -247,10 +247,26 @@ func Parse(r io.Reader) (*ParsedActivity, error) {
 			avgCad := int(lap.AvgCadence)
 			parsedLap.AvgCadence = &avgCad
 		}
-		if avgSpeed := lap.GetAvgSpeedScaled(); !math.IsNaN(avgSpeed) {
+		// Prefer EnhancedAvgSpeed (uint32, newer Garmin devices); fall back to
+		// basic AvgSpeed (uint16). If both are invalid/zero, derive from Distance/Duration.
+		avgSpeed := lap.GetEnhancedAvgSpeedScaled()
+		if math.IsNaN(avgSpeed) || avgSpeed == 0 {
+			avgSpeed = lap.GetAvgSpeedScaled()
+		}
+		if math.IsNaN(avgSpeed) || avgSpeed == 0 {
+			if parsedLap.Duration > 0 && !math.IsNaN(parsedLap.Distance) && parsedLap.Distance > 0 {
+				avgSpeed = parsedLap.Distance / float64(parsedLap.Duration) // m/s
+			}
+		}
+		if !math.IsNaN(avgSpeed) && avgSpeed > 0 {
 			parsedLap.AvgSpeed = &avgSpeed
 		}
-		if maxSpeed := lap.GetMaxSpeedScaled(); !math.IsNaN(maxSpeed) {
+		// Same pattern for max speed
+		maxSpeed := lap.GetEnhancedMaxSpeedScaled()
+		if math.IsNaN(maxSpeed) || maxSpeed == 0 {
+			maxSpeed = lap.GetMaxSpeedScaled()
+		}
+		if !math.IsNaN(maxSpeed) && maxSpeed > 0 {
 			parsedLap.MaxSpeed = &maxSpeed
 		}
 		if lap.TotalAscent != 0xFFFF {

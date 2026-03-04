@@ -117,10 +117,11 @@ type PowerCurvePoint struct {
 	AvgHeartRate    *int      `json:"avgHeartRate,omitempty"`
 }
 
-// ElevationPoint represents a distance/altitude pair for the elevation profile
+// ElevationPoint represents a distance/altitude/temperature point for the elevation profile
 type ElevationPoint struct {
-	Distance float64 `json:"distance"` // km
-	Altitude float64 `json:"altitude"` // meters
+	Distance    float64  `json:"distance"`              // km
+	Altitude    float64  `json:"altitude"`              // meters
+	Temperature *float64 `json:"temperature,omitempty"` // °C
 }
 
 // SpeedPoint represents a distance/speed/power point for the speed profile

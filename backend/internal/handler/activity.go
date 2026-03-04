@@ -309,6 +309,31 @@ func (h *Handler) GetLaps(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, laps)
 }
 
+func (h *Handler) DeleteActivity(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid activity ID")
+		return
+	}
+
+	if !h.HasDB() {
+		writeError(w, http.StatusServiceUnavailable, "Database not available")
+		return
+	}
+
+	if err := h.activityService.DeleteActivity(r.Context(), id); err != nil {
+		if errors.Is(err, repository.ErrActivityNotFound) {
+			writeError(w, http.StatusNotFound, "Activity not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "Failed to delete activity")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Handler) GetHRZoneDistribution(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)

@@ -12,12 +12,45 @@ import {
 } from "recharts";
 import { api } from "@/lib/api";
 
+function ElevationTooltip({ active, payload, label }: {
+  active?: boolean;
+  payload?: { value: number; payload: { temperature?: number } }[];
+  label?: number;
+}) {
+  if (!active || !payload?.length) return null;
+  const altitude = payload[0]?.value;
+  const temperature = payload[0]?.payload?.temperature;
+  return (
+    <div
+      style={{
+        backgroundColor: "var(--color-background-subtle)",
+        border: "1px solid var(--color-border)",
+        borderRadius: "6px",
+        padding: "8px 12px",
+        fontSize: "12px",
+      }}
+    >
+      <p style={{ color: "var(--color-foreground-muted)", marginBottom: 4 }}>
+        {Number(label).toFixed(1)} km
+      </p>
+      <p style={{ color: "#22C55E" }}>
+        Elevation: <span style={{ color: "var(--color-foreground)" }}>{Math.round(altitude ?? 0)} m</span>
+      </p>
+      {temperature != null && (
+        <p style={{ color: "#60A5FA", marginTop: 2 }}>
+          Temperature: <span style={{ color: "var(--color-foreground)" }}>{Math.round(temperature)} °C</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
 interface ElevationChartProps {
   activityId: string;
 }
 
 export function ElevationChart({ activityId }: ElevationChartProps) {
-  const [data, setData] = useState<{ distance: number; altitude: number }[]>([]);
+  const [data, setData] = useState<{ distance: number; altitude: number; temperature?: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,17 +122,7 @@ export function ElevationChart({ activityId }: ElevationChartProps) {
               tickLine={false}
               width={45}
             />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "var(--color-background-subtle)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "6px",
-                fontSize: "12px",
-              }}
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              formatter={(value: any) => [`${Math.round(value ?? 0)}m`, "Elevation"]}
-              labelFormatter={(label: any) => `${Number(label).toFixed(1)} km`}
-            />
+            <Tooltip content={<ElevationTooltip />} />
             <Area
               type="monotone"
               dataKey="altitude"

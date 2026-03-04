@@ -32,7 +32,6 @@ function formatDate(dateStr: string): string {
   });
 }
 
-
 function formatSport(sport: string): string {
   return sport.charAt(0).toUpperCase() + sport.slice(1).toLowerCase();
 }
@@ -46,6 +45,71 @@ function SportBadge({ sport }: { sport: string }) {
   );
 }
 
+function TrashIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
+  );
+}
+
+interface DeleteDialogProps {
+  activity: Activity;
+  onConfirm: () => void;
+  onCancel: () => void;
+  deleting: boolean;
+}
+
+function DeleteDialog({ activity, onConfirm, onCancel, deleting }: DeleteDialogProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onCancel}
+      />
+      {/* Dialog */}
+      <div className="relative w-full max-w-sm rounded-xl border border-border bg-background p-6 shadow-xl">
+        <h2 className="text-base font-semibold text-foreground">Delete Activity</h2>
+        <p className="mt-2 text-sm text-foreground-muted">
+          Are you sure you want to delete{" "}
+          <span className="font-medium text-foreground">{activity.name}</span>?
+          This will permanently remove the activity and all its data.
+        </p>
+        <div className="mt-6 flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            disabled={deleting}
+            className="rounded-lg border border-border px-4 py-2 text-sm text-foreground-muted hover:border-border-hover hover:text-foreground disabled:opacity-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={deleting}
+            className="rounded-lg bg-heart-rate px-4 py-2 text-sm font-medium text-white hover:bg-heart-rate/80 disabled:opacity-50 transition-colors"
+          >
+            {deleting ? "Deleting…" : "Delete"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ActivitiesPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [total, setTotal] = useState(0);
@@ -53,6 +117,8 @@ export default function ActivitiesPage() {
   const [limit, setLimit] = useState<PageSize>(25);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toDelete, setToDelete] = useState<Activity | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchActivities = useCallback(async (p: number, l: PageSize) => {
     setLoading(true);
@@ -79,12 +145,42 @@ export default function ActivitiesPage() {
     setPage(1);
   }
 
+  async function handleDeleteConfirm() {
+    if (!toDelete) return;
+    setDeleting(true);
+    try {
+      await api.deleteActivity(toDelete.id);
+      setToDelete(null);
+      // If deleting the last item on the page, go back one page
+      const newTotal = total - 1;
+      const maxPage = Math.max(1, Math.ceil(newTotal / limit));
+      const nextPage = Math.min(page, maxPage);
+      if (nextPage !== page) {
+        setPage(nextPage);
+      } else {
+        fetchActivities(nextPage, limit);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete activity");
+      setToDelete(null);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div>
-      <PageHeader
-        title="My Activities"
-        description="Your ride history"
-      />
+      <PageHeader title="My Activities" description="Your ride history" />
+
+      {toDelete && (
+        <DeleteDialog
+          activity={toDelete}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setToDelete(null)}
+          deleting={deleting}
+        />
+      )}
+
       <div className="p-6">
         {error && (
           <div className="rounded-lg bg-heart-rate/10 p-4 text-center mb-4">
@@ -106,7 +202,6 @@ export default function ActivitiesPage() {
 
         {(loading || activities.length > 0) && (
           <>
-            {/* Table */}
             <div className="rounded-lg border border-border overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
@@ -118,13 +213,14 @@ export default function ActivitiesPage() {
                     <th className="px-4 py-3 text-right text-xs font-medium text-foreground-muted uppercase tracking-wider">Time</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-foreground-muted uppercase tracking-wider">Elevation</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-foreground-muted uppercase tracking-wider">Avg Power</th>
+                    <th className="px-4 py-3 w-10" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {loading
                     ? Array.from({ length: limit }).map((_, i) => (
                         <tr key={i} className="animate-pulse">
-                          {Array.from({ length: 7 }).map((_, j) => (
+                          {Array.from({ length: 8 }).map((_, j) => (
                             <td key={j} className="px-4 py-3">
                               <div className="h-4 rounded bg-background-subtle" />
                             </td>
@@ -134,7 +230,7 @@ export default function ActivitiesPage() {
                     : activities.map((activity) => (
                         <tr
                           key={activity.id}
-                          className="hover:bg-background-subtle transition-colors"
+                          className="hover:bg-background-subtle transition-colors group"
                         >
                           <td className="px-4 py-3">
                             <SportBadge sport={activity.sport} />
@@ -165,6 +261,15 @@ export default function ActivitiesPage() {
                             ) : (
                               <span className="text-foreground-muted">—</span>
                             )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              onClick={() => setToDelete(activity)}
+                              className="text-foreground-muted opacity-0 group-hover:opacity-100 hover:text-heart-rate transition-all"
+                              title="Delete activity"
+                            >
+                              <TrashIcon />
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -213,7 +318,6 @@ export default function ActivitiesPage() {
                   ‹
                 </button>
 
-                {/* Page numbers */}
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
                   .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
                   .reduce<(number | "…")[]>((acc, p, i, arr) => {

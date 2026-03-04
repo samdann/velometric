@@ -394,8 +394,9 @@ func (s *ActivityService) GetElevationProfile(ctx context.Context, activityID uu
 			sum += points[j].Altitude
 		}
 		smoothed[i] = model.ElevationPoint{
-			Distance: p.Distance,
-			Altitude: sum / float64(end-start),
+			Distance:    p.Distance,
+			Altitude:    sum / float64(end-start),
+			Temperature: p.Temperature,
 		}
 	}
 
@@ -641,4 +642,8 @@ func classifyHRZone(hrPct float64, zones []model.HRZone) int {
 	}
 	// If above all zones, assign to last zone
 	return len(zones) - 1
+}
+
+func (s *ActivityService) DeleteActivity(ctx context.Context, id uuid.UUID) error {
+	return s.repo.DeleteActivity(ctx, id)
 }

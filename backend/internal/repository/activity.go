@@ -23,9 +23,22 @@ func sanitizeFloat(f *float64) *float64 {
 	return f
 }
 
+// clampGradient discards physically impossible gradient spikes (corrupt FIT data).
+// Real-world gradients stay well within ±100%; anything beyond ±200% is noise.
+func clampGradient(f *float64) *float64 {
+	if f == nil || math.IsNaN(*f) || math.IsInf(*f, 0) {
+		return nil
+	}
+	if *f > 200 || *f < -200 {
+		return nil
+	}
+	return f
+}
+
 // ErrDuplicateActivity is returned when an activity with the same
 // (user_id, start_time, sport, distance, duration) already exists.
 var ErrDuplicateActivity = errors.New("activity already exists")
+var ErrActivityNotFound = errors.New("activity not found")
 
 type ActivityRepository struct {
 	pool *pgxpool.Pool
@@ -186,7 +199,7 @@ func (r *ActivityRepository) InsertRecords(ctx context.Context, records []model.
 				r.ActivityID, r.Timestamp, r.Lat, r.Lon, r.Altitude, r.Distance,
 				r.Power, r.HeartRate, r.Cadence, r.Speed, r.Temperature,
 				r.LeftRightBalance, r.LeftTorqueEffectiveness, r.RightTorqueEffectiveness,
-				r.LeftPedalSmoothness, r.RightPedalSmoothness, r.Gradient,
+				r.LeftPedalSmoothness, r.RightPedalSmoothness, clampGradient(r.Gradient),
 			}, nil
 		}),
 	)
@@ -362,10 +375,10 @@ func (r *ActivityRepository) GetLaps(ctx context.Context, activityID uuid.UUID) 
 	return laps, nil
 }
 
-// GetElevationProfile retrieves raw distance/altitude pairs for an activity
+// GetElevationProfile retrieves distance/altitude/temperature points for an activity
 func (r *ActivityRepository) GetElevationProfile(ctx context.Context, activityID uuid.UUID) ([]model.ElevationPoint, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT distance, altitude
+		SELECT distance, altitude, temperature
 		FROM activity_records
 		WHERE activity_id = $1
 		  AND distance IS NOT NULL
@@ -381,12 +394,13 @@ func (r *ActivityRepository) GetElevationProfile(ctx context.Context, activityID
 	for rows.Next() {
 		var p model.ElevationPoint
 		var distMeters float64
-		if err := rows.Scan(&distMeters, &p.Altitude); err != nil {
+		if err := rows.Scan(&distMeters, &p.Altitude, &p.Temperature); err != nil {
 			return nil, fmt.Errorf("failed to scan elevation point: %w", err)
 		}
 		if sanitizeFloat(&p.Altitude) == nil {
 			continue
 		}
+		p.Temperature = sanitizeFloat(p.Temperature)
 		p.Distance = distMeters / 1000.0 // convert to km
 		points = append(points, p)
 	}
@@ -542,4 +556,15 @@ func (r *ActivityRepository) GetHRTimeSeries(ctx context.Context, activityID uui
 		points = append(points, p)
 	}
 	return points, nil
+}
+
+func (r *ActivityRepository) DeleteActivity(ctx context.Context, id uuid.UUID) error {
+	tag, err := r.pool.Exec(ctx, `DELETE FROM activities WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete activity: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrActivityNotFound
+	}
+	return nil
 }
