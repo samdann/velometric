@@ -110,14 +110,14 @@ export function DataTab({ activityId }: DataTabProps) {
         <table className="w-full min-w-[700px]">
           <thead className="bg-background-subtle">
             <tr>
-              <th className="px-3 py-2 text-left text-xs font-medium text-foreground-muted">Time</th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-foreground-muted">Dist (m)</th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-foreground-muted">Alt (m)</th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-foreground-muted">Power</th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-foreground-muted">HR</th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-foreground-muted">Cad</th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-foreground-muted">Speed</th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-foreground-muted">Temp</th>
+              <th className="px-3 py-2 text-left font-medium text-foreground-muted">Time</th>
+              <th className="px-3 py-2 text-right font-medium text-foreground-muted">Dist (m)</th>
+              <th className="px-3 py-2 text-right font-medium text-foreground-muted">Alt (m)</th>
+              <th className="px-3 py-2 text-right font-medium text-foreground-muted">Power</th>
+              <th className="px-3 py-2 text-right font-medium text-foreground-muted">HR</th>
+              <th className="px-3 py-2 text-right font-medium text-foreground-muted">Cad</th>
+              <th className="px-3 py-2 text-right font-medium text-foreground-muted">Speed</th>
+              <th className="px-3 py-2 text-right font-medium text-foreground-muted">Temp</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border text-sm">
