@@ -127,81 +127,57 @@ export function PowerTab({ activityId, activity }: PowerTabProps) {
       {/* Key Power Outputs */}
       <div>
         <h3 className="mb-3 text-sm font-medium text-foreground-muted">Key Power Outputs</h3>
-        <div className="space-y-3">
-          {/* Row 1: Power data */}
-          <div className="grid grid-cols-3 gap-3">
-            {activity.avgPower && (
-              <div className="rounded-lg border border-border bg-background-subtle p-4">
-                <p className="text-xs text-foreground-muted">Avg Power</p>
-                <p className="mt-1 font-mono text-2xl text-power">
-                  {activity.avgPower}<span className="ml-1 text-sm text-foreground-muted">w</span>
-                </p>
-              </div>
-            )}
-            {activity.normalizedPower && (
-              <div className="rounded-lg border border-border bg-background-subtle p-4">
-                <p className="text-xs text-foreground-muted">Normalized Power</p>
-                <p className="mt-1 font-mono text-2xl text-power">
-                  {activity.normalizedPower}<span className="ml-1 text-sm text-foreground-muted">w</span>
-                </p>
-              </div>
-            )}
-            {activity.maxPower && (
-              <div className="rounded-lg border border-border bg-background-subtle p-4">
-                <p className="text-xs text-foreground-muted">Max Power</p>
-                <p className="mt-1 font-mono text-2xl text-power">
-                  {activity.maxPower}<span className="ml-1 text-sm text-foreground-muted">w</span>
-                </p>
-              </div>
-            )}
-          </div>
-          {/* Row 2: Derived metrics */}
-          <div className="grid grid-cols-3 gap-3">
-            {activity.intensityFactor && (
-              <div className="rounded-lg border border-border bg-background-subtle p-4">
-                <p className="text-xs text-foreground-muted">Intensity Factor</p>
-                <p className="mt-1 font-mono text-2xl">
-                  {activity.intensityFactor.toFixed(2)}
-                </p>
-              </div>
-            )}
-            {activity.tss && (
-              <div className="rounded-lg border border-border bg-background-subtle p-4">
-                <p className="text-xs text-foreground-muted">TSS</p>
-                <p className="mt-1 font-mono text-2xl">
-                  {activity.tss.toFixed(0)}
-                </p>
-              </div>
-            )}
-            {activity.variabilityIndex && (
-              <div className="rounded-lg border border-border bg-background-subtle p-4">
-                <p className="text-xs text-foreground-muted">Variability Index</p>
-                <p className="mt-1 font-mono text-2xl">
-                  {activity.variabilityIndex.toFixed(2)}
-                </p>
-              </div>
-            )}
-          </div>
+        <div className="grid grid-cols-6 gap-3">
+          {activity.avgPower && (
+            <div className="rounded-lg border border-border bg-background-subtle p-4">
+              <p className="truncate text-xs text-foreground-muted">Avg Power</p>
+              <p className="mt-1 font-mono text-base text-power">
+                {activity.avgPower}<span className="ml-1 text-sm text-foreground-muted">w</span>
+              </p>
+            </div>
+          )}
+          {activity.normalizedPower && (
+            <div className="rounded-lg border border-border bg-background-subtle p-4">
+              <p className="truncate text-xs text-foreground-muted">Norm. Power</p>
+              <p className="mt-1 font-mono text-base text-power">
+                {activity.normalizedPower}<span className="ml-1 text-sm text-foreground-muted">w</span>
+              </p>
+            </div>
+          )}
+          {activity.maxPower && (
+            <div className="rounded-lg border border-border bg-background-subtle p-4">
+              <p className="truncate text-xs text-foreground-muted">Max Power</p>
+              <p className="mt-1 font-mono text-base text-power">
+                {activity.maxPower}<span className="ml-1 text-sm text-foreground-muted">w</span>
+              </p>
+            </div>
+          )}
+          {activity.intensityFactor && (
+            <div className="rounded-lg border border-border bg-background-subtle p-4">
+              <p className="truncate text-xs text-foreground-muted">Int. Factor</p>
+              <p className="mt-1 font-mono text-base">
+                {activity.intensityFactor.toFixed(2)}
+              </p>
+            </div>
+          )}
+          {activity.tss && (
+            <div className="rounded-lg border border-border bg-background-subtle p-4">
+              <p className="truncate text-xs text-foreground-muted">TSS</p>
+              <p className="mt-1 font-mono text-base">
+                {activity.tss.toFixed(0)}
+              </p>
+            </div>
+          )}
+          {activity.variabilityIndex && (
+            <div className="rounded-lg border border-border bg-background-subtle p-4">
+              <p className="truncate text-xs text-foreground-muted">Variability</p>
+              <p className="mt-1 font-mono text-base">
+                {activity.variabilityIndex.toFixed(2)}
+              </p>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Key Power Outputs */}
-      {keyPowers.length > 0 && (
-        <div>
-          <h3 className="mb-3 text-sm font-medium text-foreground-muted">Peak Power</h3>
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-            {keyPowers.map(({ duration, label, power }) => (
-              <div
-                key={duration}
-                className="rounded-lg border border-border bg-background-subtle p-3 text-center"
-              >
-                <p className="text-xs text-foreground-muted">{label}</p>
-                <p className="mt-1 font-mono text-lg text-power">{power}w</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Power Curve — chart or table */}
       {(tableRows.length > 0 || powerCurve.length > 0) && (
