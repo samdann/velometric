@@ -80,6 +80,16 @@ export interface PowerZone {
   color: string;
 }
 
+export interface PowerZoneDistributionPoint {
+  zone_number: number;
+  name: string;
+  color: string;
+  min_watts: number;
+  max_watts: number | null;
+  seconds: number;
+  percentage: number;
+}
+
 export interface PowerZonesResponse {
   ftp: number;
   zones: PowerZone[];
@@ -257,6 +267,15 @@ class ApiClient {
     if (!response.ok) {
       const error: ApiError = await response.json();
       throw new Error(error.error || "Failed to fetch HR zone distribution");
+    }
+    return response.json();
+  }
+
+  async getPowerZoneDistribution(activityId: string): Promise<PowerZoneDistributionPoint[]> {
+    const response = await fetch(`${this.baseUrl}/api/activities/${activityId}/power-zone-distribution`);
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to fetch power zone distribution");
     }
     return response.json();
   }

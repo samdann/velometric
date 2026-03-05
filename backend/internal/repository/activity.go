@@ -558,6 +558,36 @@ func (r *ActivityRepository) GetHRTimeSeries(ctx context.Context, activityID uui
 	return points, nil
 }
 
+// PowerTimePoint is a lightweight timestamp + power pair for zone computation
+type PowerTimePoint struct {
+	Timestamp time.Time
+	Power     int
+}
+
+// GetPowerTimeSeries retrieves ordered timestamp+power pairs for an activity
+func (r *ActivityRepository) GetPowerTimeSeries(ctx context.Context, activityID uuid.UUID) ([]PowerTimePoint, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT timestamp, power
+		FROM activity_records
+		WHERE activity_id = $1 AND power IS NOT NULL
+		ORDER BY timestamp ASC
+	`, activityID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get power time series: %w", err)
+	}
+	defer rows.Close()
+
+	var points []PowerTimePoint
+	for rows.Next() {
+		var p PowerTimePoint
+		if err := rows.Scan(&p.Timestamp, &p.Power); err != nil {
+			return nil, fmt.Errorf("failed to scan power time point: %w", err)
+		}
+		points = append(points, p)
+	}
+	return points, nil
+}
+
 func (r *ActivityRepository) DeleteActivity(ctx context.Context, id uuid.UUID) error {
 	tag, err := r.pool.Exec(ctx, `DELETE FROM activities WHERE id = $1`, id)
 	if err != nil {

@@ -334,6 +334,43 @@ func (h *Handler) DeleteActivity(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *Handler) GetPowerZoneDistribution(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid activity ID")
+		return
+	}
+
+	if !h.HasDB() {
+		writeError(w, http.StatusServiceUnavailable, "Database not available")
+		return
+	}
+
+	ftp, zones, err := h.userService.GetPowerZones(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get power zones")
+		return
+	}
+	if ftp <= 0 || len(zones) == 0 {
+		writeJSON(w, http.StatusOK, []interface{}{})
+		return
+	}
+
+	distribution, err := h.activityService.ComputePowerZoneDistribution(r.Context(), id, ftp, zones)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to compute power zone distribution")
+		return
+	}
+
+	if distribution == nil {
+		writeJSON(w, http.StatusOK, []interface{}{})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, distribution)
+}
+
 func (h *Handler) GetHRZoneDistribution(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)

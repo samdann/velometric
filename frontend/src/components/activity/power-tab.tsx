@@ -10,7 +10,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { api, Activity } from "@/lib/api";
+import { api, Activity, PowerZoneDistributionPoint } from "@/lib/api";
+import { PowerZonesChart } from "./power-zones-chart";
 
 interface PowerCurvePoint {
   durationSeconds: number;
@@ -69,6 +70,7 @@ const X_TICKS = [1, 5, 30, 60, 300, 600, 1800, 3600, 7200];
 
 export function PowerTab({ activityId, activity }: PowerTabProps) {
   const [powerCurve, setPowerCurve] = useState<PowerCurvePoint[]>([]);
+  const [powerZones, setPowerZones] = useState<PowerZoneDistributionPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [curveView, setCurveView] = useState<"chart" | "table">("chart");
@@ -76,10 +78,12 @@ export function PowerTab({ activityId, activity }: PowerTabProps) {
   useEffect(() => {
     async function fetchData() {
       try {
-        const data = await api.getPowerCurve(activityId);
-        // Sort by duration
-        const sorted = data.sort((a, b) => a.durationSeconds - b.durationSeconds);
-        setPowerCurve(sorted);
+        const [curveData, zonesData] = await Promise.all([
+          api.getPowerCurve(activityId),
+          api.getPowerZoneDistribution(activityId),
+        ]);
+        setPowerCurve(curveData.sort((a, b) => a.durationSeconds - b.durationSeconds));
+        setPowerZones(zonesData);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load power data");
       } finally {
@@ -290,6 +294,9 @@ export function PowerTab({ activityId, activity }: PowerTabProps) {
           </div>
         </div>
       )}
+
+      {/* Power Zone Distribution */}
+      <PowerZonesChart distribution={powerZones} />
     </div>
   );
 }

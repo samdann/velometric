@@ -644,6 +644,70 @@ func classifyHRZone(hrPct float64, zones []model.HRZone) int {
 	return len(zones) - 1
 }
 
+// ComputePowerZoneDistribution computes time spent in each power zone for an activity.
+// ftp is the user's FTP in watts; zones are sorted by zone_number ascending.
+func (s *ActivityService) ComputePowerZoneDistribution(ctx context.Context, activityID uuid.UUID, ftp int, zones []model.PowerZone) ([]model.PowerZoneDistributionPoint, error) {
+	pts, err := s.repo.GetPowerTimeSeries(ctx, activityID)
+	if err != nil {
+		return nil, err
+	}
+	if len(pts) < 2 || ftp <= 0 || len(zones) == 0 {
+		return nil, nil
+	}
+
+	zoneSecs := make([]float64, len(zones))
+	totalSecs := 0.0
+
+	for i := 1; i < len(pts); i++ {
+		dt := pts[i].Timestamp.Sub(pts[i-1].Timestamp).Seconds()
+		if dt <= 0 || dt > 60 {
+			continue
+		}
+		powerPct := float64(pts[i-1].Power) / float64(ftp) * 100.0
+		zoneIdx := classifyPowerZone(powerPct, zones)
+		if zoneIdx >= 0 {
+			zoneSecs[zoneIdx] += dt
+			totalSecs += dt
+		}
+	}
+
+	result := make([]model.PowerZoneDistributionPoint, len(zones))
+	for i, z := range zones {
+		minWatts := int(z.MinPercentage / 100.0 * float64(ftp))
+		var maxWatts *int
+		if z.MaxPercentage != nil {
+			v := int(*z.MaxPercentage / 100.0 * float64(ftp))
+			maxWatts = &v
+		}
+		pct := 0.0
+		if totalSecs > 0 {
+			pct = zoneSecs[i] / totalSecs * 100.0
+		}
+		result[i] = model.PowerZoneDistributionPoint{
+			ZoneNumber: z.ZoneNumber,
+			Name:       z.Name,
+			Color:      z.Color,
+			MinWatts:   minWatts,
+			MaxWatts:   maxWatts,
+			Seconds:    zoneSecs[i],
+			Percentage: pct,
+		}
+	}
+	return result, nil
+}
+
+func classifyPowerZone(powerPct float64, zones []model.PowerZone) int {
+	for i, z := range zones {
+		if powerPct < z.MinPercentage {
+			continue
+		}
+		if z.MaxPercentage == nil || powerPct < *z.MaxPercentage {
+			return i
+		}
+	}
+	return len(zones) - 1
+}
+
 func (s *ActivityService) DeleteActivity(ctx context.Context, id uuid.UUID) error {
 	return s.repo.DeleteActivity(ctx, id)
 }

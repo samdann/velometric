@@ -164,3 +164,14 @@ type HRZoneDistributionPoint struct {
 	Seconds    float64  `json:"seconds"`
 	Percentage float64  `json:"percentage"`
 }
+
+// PowerZoneDistributionPoint is the time-in-zone data for one power zone
+type PowerZoneDistributionPoint struct {
+	ZoneNumber int      `json:"zone_number"`
+	Name       string   `json:"name"`
+	Color      string   `json:"color"`
+	MinWatts   int      `json:"min_watts"`
+	MaxWatts   *int     `json:"max_watts"`
+	Seconds    float64  `json:"seconds"`
+	Percentage float64  `json:"percentage"`
+}
