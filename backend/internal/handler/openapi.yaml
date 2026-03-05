@@ -137,6 +137,51 @@ paths:
                 items:
                   $ref: "#/components/schemas/ActivityLap"
 
+  /api/internal/batch-import:
+    post:
+      summary: Start batch FIT import
+      description: |
+        Scans the server-side `.fit/` directory and imports all activity FIT files
+        into the database. Runs asynchronously — returns a job ID immediately.
+        Re-running is safe: already-imported activities are skipped and flagged as duplicates.
+      tags: [Internal]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BatchImportRequest"
+      responses:
+        "202":
+          description: Job accepted and running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchImportJob"
+        "503":
+          description: Database unavailable
+
+  /api/internal/batch-import/{id}:
+    get:
+      summary: Get batch import status / report
+      tags: [Internal]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Job status and report (report is null while running)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchImportJob"
+        "404":
+          description: Job not found
+
 components:
   parameters:
     ActivityId:
@@ -292,6 +337,89 @@ components:
           format: uuid
         message:
           type: string
+
+    BatchImportRequest:
+      type: object
+      properties:
+        types:
+          type: array
+          items:
+            type: string
+            enum: [cycling, running, swimming]
+          description: Sports to import. Empty array = all types.
+          example: ["cycling"]
+        from:
+          type: string
+          format: date-time
+          description: Import activities on or after this time (RFC3339). Omit for no lower bound.
+          example: "2023-01-01T00:00:00Z"
+        to:
+          type: string
+          format: date-time
+          description: Import activities on or before this time (RFC3339). Omit for no upper bound.
+          example: "2024-12-31T23:59:59Z"
+
+    BatchImportJob:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [running, completed]
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        progress:
+          type: object
+          properties:
+            total:
+              type: integer
+            processed:
+              type: integer
+        report:
+          type: object
+          nullable: true
+          properties:
+            totalFiles:
+              type: integer
+            success:
+              type: integer
+            duplicates:
+              type: integer
+            skippedType:
+              type: integer
+            skippedDateRange:
+              type: integer
+            skippedNotActivity:
+              type: integer
+            errors:
+              type: integer
+            errorsByMessage:
+              type: object
+              additionalProperties:
+                type: integer
+            errorDetails:
+              type: array
+              items:
+                type: object
+                properties:
+                  file:
+                    type: string
+                  error:
+                    type: string
+            duplicateFiles:
+              type: array
+              items:
+                type: string
+            sportBreakdown:
+              type: object
+              additionalProperties:
+                type: integer
 
     Error:
       type: object

@@ -26,6 +26,9 @@ services:
       - FRONTEND_URL=http://localhost:3001
       - DATABASE_URL=postgres://postgres:postgres@db:5432/velometric?sslmode=disable
       - REDIS_URL=redis://redis:6379
+      - FIT_DIR=/fit
+    volumes:
+      - ./.fit:/fit:ro
     depends_on:
       db:
         condition: service_healthy

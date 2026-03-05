@@ -3,6 +3,7 @@ package fitparser
 import (
 	"archive/zip"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -10,6 +11,10 @@ import (
 
 	"github.com/tormoder/fit"
 )
+
+// ErrNotActivity is returned when a FIT file is valid but not an activity
+// (e.g. monitoring, weight, segment-list). Callers should skip, not error.
+var ErrNotActivity = errors.New("not an activity FIT file")
 
 // Parse reads a FIT file (or ZIP containing FIT) and extracts activity data
 func Parse(r io.Reader) (*ParsedActivity, error) {
@@ -39,6 +44,10 @@ func Parse(r io.Reader) (*ParsedActivity, error) {
 	fitFile, err := fit.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode FIT file: %w", err)
+	}
+
+	if fitFile.Type() != fit.FileTypeActivity {
+		return nil, ErrNotActivity
 	}
 
 	activity, err := fitFile.Activity()

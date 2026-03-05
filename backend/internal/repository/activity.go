@@ -716,6 +716,29 @@ func (r *ActivityRepository) GetFeedActivities(ctx context.Context, userID uuid.
 	return feed, total, nil
 }
 
+// GetFirstGPSPoint returns the first lat/lon from activity_records for lazy geocoding.
+func (r *ActivityRepository) GetFirstGPSPoint(ctx context.Context, activityID uuid.UUID) (float64, float64, error) {
+	var lat, lon float64
+	err := r.pool.QueryRow(ctx, `
+		SELECT lat, lon FROM activity_records
+		WHERE activity_id = $1 AND lat IS NOT NULL AND lon IS NOT NULL
+		ORDER BY timestamp ASC LIMIT 1
+	`, activityID).Scan(&lat, &lon)
+	if err != nil {
+		return 0, 0, fmt.Errorf("no GPS data: %w", err)
+	}
+	return lat, lon, nil
+}
+
+// UpdateActivityLocation persists a resolved location string.
+func (r *ActivityRepository) UpdateActivityLocation(ctx context.Context, activityID uuid.UUID, location string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE activities SET location = $1 WHERE id = $2`,
+		location, activityID,
+	)
+	return err
+}
+
 func (r *ActivityRepository) DeleteActivity(ctx context.Context, id uuid.UUID) error {
 	tag, err := r.pool.Exec(ctx, `DELETE FROM activities WHERE id = $1`, id)
 	if err != nil {

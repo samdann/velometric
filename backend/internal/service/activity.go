@@ -171,17 +171,6 @@ func (s *ActivityService) ProcessFITFile(ctx context.Context, userID uuid.UUID, 
 		name = generateActivityName(parsed.Sport, parsed.StartTime)
 	}
 
-	// Attempt reverse geocoding from first GPS record (best-effort, non-fatal)
-	var location *string
-	for _, rec := range parsed.Records {
-		if rec.Lat != nil && rec.Lon != nil {
-			if loc, err := reverseGeocode(ctx, *rec.Lat, *rec.Lon); err == nil && loc != "" {
-				location = &loc
-			}
-			break
-		}
-	}
-
 	// Create activity model
 	activity := &model.Activity{
 		UserID:     userID,
@@ -191,7 +180,7 @@ func (s *ActivityService) ProcessFITFile(ctx context.Context, userID uuid.UUID, 
 		Duration:   duration,
 		Distance:   distance,
 		DeviceName: parsed.DeviceName,
-		Location:   location,
+		// Location is populated lazily on first activity view via reverse geocoding.
 		ElevationGain: elevationGain,
 	}
 
@@ -371,9 +360,23 @@ func (s *ActivityService) ProcessFITFile(ctx context.Context, userID uuid.UUID, 
 	return activity, nil
 }
 
-// GetActivity retrieves an activity by ID
+// GetActivity retrieves an activity by ID and lazily resolves its location on first view.
 func (s *ActivityService) GetActivity(ctx context.Context, id uuid.UUID) (*model.Activity, error) {
-	return s.repo.GetByID(ctx, id)
+	activity, err := s.repo.GetByID(ctx, id)
+	if err != nil || activity == nil {
+		return activity, err
+	}
+
+	if activity.Location == nil {
+		if lat, lon, err := s.repo.GetFirstGPSPoint(ctx, id); err == nil {
+			if loc, err := reverseGeocode(ctx, lat, lon); err == nil && loc != "" {
+				_ = s.repo.UpdateActivityLocation(ctx, id, loc)
+				activity.Location = &loc
+			}
+		}
+	}
+
+	return activity, nil
 }
 
 // ListActivities retrieves all activities for a user

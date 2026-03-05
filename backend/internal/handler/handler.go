@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/velometric/backend/internal/database"
 	"github.com/velometric/backend/internal/repository"
 	"github.com/velometric/backend/internal/service"
@@ -11,19 +14,24 @@ type Handler struct {
 	db              *database.DB
 	activityService *service.ActivityService
 	userService     *service.UserService
+	batchImport     *service.BatchImportService
 }
 
 // New creates a new Handler with dependencies
 func New(db *database.DB) *Handler {
-	h := &Handler{
-		db: db,
-	}
+	h := &Handler{db: db}
 
 	if db != nil {
 		activityRepo := repository.NewActivityRepository(db.Pool)
 		h.activityService = service.NewActivityService(activityRepo)
 		userRepo := repository.NewUserRepository(db.Pool)
 		h.userService = service.NewUserService(userRepo)
+
+		fitDir := os.Getenv("FIT_DIR")
+		if fitDir == "" {
+			fitDir = filepath.Join("..", ".fit")
+		}
+		h.batchImport = service.NewBatchImportService(activityRepo, fitDir)
 	}
 
 	return h

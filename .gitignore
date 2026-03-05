@@ -19,6 +19,7 @@ tmp/
 .vscode/
 *.swp
 *.swo
+.fit/
 
 # OS
 .DS_Store

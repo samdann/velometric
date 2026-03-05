@@ -12,6 +12,7 @@ bin/
 # Output
 *.out
 
+
 # Environment
 .env
 
@@ -23,6 +24,7 @@ bin/
 .vscode/
 *.swp
 *.swo
+.fit/
 
 # OS
 .DS_Store

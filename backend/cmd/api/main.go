@@ -75,6 +75,9 @@ func main() {
 		r.Get("/activities/{id}/power-zone-distribution", h.GetPowerZoneDistribution)
 		r.Delete("/activities/{id}", h.DeleteActivity)
 
+		r.Post("/internal/batch-import", h.StartBatchImport)
+		r.Get("/internal/batch-import/{id}", h.GetBatchImportStatus)
+
 		r.Get("/user/profile", h.GetProfile)
 		r.Put("/user/profile", h.UpdateProfile)
 		r.Get("/user/hr-zones", h.GetHRZones)
