@@ -294,15 +294,24 @@ func (s *ActivityService) ProcessFITFile(ctx context.Context, userID uuid.UUID, 
 		return nil, fmt.Errorf("failed to insert laps: %w", err)
 	}
 
-	// Compute and save power curve with heart rate and elevation data
+	// Compute and save power curve — use model records so gradient is available
 	var pcRecords []PowerCurveRecord
-	for _, rec := range parsed.Records {
+	for _, rec := range records {
 		if rec.Power == nil {
 			continue
 		}
-		pcr := PowerCurveRecord{Power: *rec.Power}
+		pcr := PowerCurveRecord{
+			Power:               *rec.Power,
+			Speed:               rec.Speed,
+			Gradient:            rec.Gradient,
+			LRBalance:           rec.LeftRightBalance,
+			TorqueEffectiveness: rec.LeftTorqueEffectiveness,
+		}
 		if rec.HeartRate != nil {
 			pcr.HeartRate = *rec.HeartRate
+		}
+		if rec.Cadence != nil {
+			pcr.Cadence = *rec.Cadence
 		}
 		pcRecords = append(pcRecords, pcr)
 	}
@@ -312,10 +321,15 @@ func (s *ActivityService) ProcessFITFile(ctx context.Context, userID uuid.UUID, 
 		powerCurve := make([]model.PowerCurvePoint, 0, len(powerCurveMap))
 		for duration, result := range powerCurveMap {
 			powerCurve = append(powerCurve, model.PowerCurvePoint{
-				ActivityID:      activityID,
-				DurationSeconds: duration,
-				BestPower:       result.BestPower,
-				AvgHeartRate:    result.AvgHeartRate,
+				ActivityID:             activityID,
+				DurationSeconds:        duration,
+				BestPower:              result.BestPower,
+				AvgHeartRate:           result.AvgHeartRate,
+				AvgSpeed:               result.AvgSpeed,
+				AvgGradient:            result.AvgGradient,
+				AvgCadence:             result.AvgCadence,
+				AvgLRBalance:           result.AvgLRBalance,
+				AvgTorqueEffectiveness: result.AvgTorqueEffectiveness,
 			})
 		}
 

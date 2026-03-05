@@ -96,18 +96,28 @@ func ComputePowerCurve(powers []int) map[int]int {
 
 // PowerCurveRecord holds per-second data for extended power curve computation
 type PowerCurveRecord struct {
-	Power     int
-	HeartRate int // 0 if not available
+	Power               int
+	HeartRate           int      // 0 if not available
+	Cadence             int      // 0 if not available
+	Speed               *float64 // m/s, nil if not available
+	Gradient            *float64 // %, nil if not available
+	LRBalance           *float64 // %, nil if not available
+	TorqueEffectiveness *float64 // %, nil if not available
 }
 
 // PowerCurveResult holds the result for a single duration
 type PowerCurveResult struct {
-	BestPower    int
-	AvgHeartRate *int
+	BestPower              int
+	AvgHeartRate           *int
+	AvgSpeed               *float64
+	AvgGradient            *float64
+	AvgCadence             *int
+	AvgLRBalance           *float64
+	AvgTorqueEffectiveness *float64
 }
 
 // ComputePowerCurveExtended calculates best power for standard durations
-// and also computes avg heart rate and elevation gain for the best window.
+// and also computes avg metrics over the best window.
 func ComputePowerCurveExtended(records []PowerCurveRecord) map[int]PowerCurveResult {
 	durations := []int{1, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 300, 600, 900, 1200, 1800, 2700, 3600, 5400, 7200}
 
@@ -138,17 +148,69 @@ func ComputePowerCurveExtended(records []PowerCurveRecord) map[int]PowerCurveRes
 			BestPower: maxSum / duration,
 		}
 
-		// Average heart rate over the best window
+		// Compute averages over the best window
 		var hrSum, hrCount int
+		var cadSum, cadCount int
+		var speedSum float64
+		var speedCount int
+		var gradSum float64
+		var gradCount int
+		var lrSum float64
+		var lrCount int
+		var teSum float64
+		var teCount int
+
 		for j := bestStart; j < bestStart+duration; j++ {
-			if records[j].HeartRate > 0 {
-				hrSum += records[j].HeartRate
+			r := records[j]
+			if r.HeartRate > 0 {
+				hrSum += r.HeartRate
 				hrCount++
 			}
+			if r.Cadence > 0 {
+				cadSum += r.Cadence
+				cadCount++
+			}
+			if r.Speed != nil {
+				speedSum += *r.Speed
+				speedCount++
+			}
+			if r.Gradient != nil {
+				gradSum += *r.Gradient
+				gradCount++
+			}
+			if r.LRBalance != nil {
+				lrSum += *r.LRBalance
+				lrCount++
+			}
+			if r.TorqueEffectiveness != nil {
+				teSum += *r.TorqueEffectiveness
+				teCount++
+			}
 		}
+
 		if hrCount > 0 {
-			avgHR := hrSum / hrCount
-			result.AvgHeartRate = &avgHR
+			v := hrSum / hrCount
+			result.AvgHeartRate = &v
+		}
+		if cadCount > 0 {
+			v := cadSum / cadCount
+			result.AvgCadence = &v
+		}
+		if speedCount > 0 {
+			v := speedSum / float64(speedCount)
+			result.AvgSpeed = &v
+		}
+		if gradCount > 0 {
+			v := gradSum / float64(gradCount)
+			result.AvgGradient = &v
+		}
+		if lrCount > 0 {
+			v := lrSum / float64(lrCount)
+			result.AvgLRBalance = &v
+		}
+		if teCount > 0 {
+			v := teSum / float64(teCount)
+			result.AvgTorqueEffectiveness = &v
 		}
 
 		results[duration] = result

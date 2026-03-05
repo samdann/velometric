@@ -152,7 +152,17 @@ class ApiClient {
     return response.json();
   }
 
-  async getPowerCurve(id: string): Promise<{ durationSeconds: number; bestPower: number; avgHeartRate?: number }[]> {
+  async getPowerCurve(id: string): Promise<{
+    durationSeconds: number;
+    bestPower: number;
+    avgHeartRate?: number;
+    avgSpeed?: number;       // m/s
+    avgGradient?: number;    // %
+    avgCadence?: number;     // rpm
+    avgLRBalance?: number;   // %
+    avgTorqueEffectiveness?: number; // %
+    wattsPerKg?: number;
+  }[]> {
     const response = await fetch(`${this.baseUrl}/api/activities/${id}/power-curve`);
 
     if (!response.ok) {

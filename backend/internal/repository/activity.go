@@ -250,12 +250,18 @@ func (r *ActivityRepository) InsertPowerCurve(ctx context.Context, points []mode
 	batch := &pgx.Batch{}
 	for _, p := range points {
 		batch.Queue(`
-			INSERT INTO activity_power_curve (activity_id, duration_seconds, best_power, avg_hr)
-			VALUES ($1, $2, $3, $4)
+			INSERT INTO activity_power_curve (activity_id, duration_seconds, best_power, avg_hr, avg_speed, avg_gradient, avg_cadence, avg_lr_balance, avg_torque_effectiveness)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 			ON CONFLICT (activity_id, duration_seconds) DO UPDATE SET
 				best_power = EXCLUDED.best_power,
-				avg_hr = EXCLUDED.avg_hr
-		`, p.ActivityID, p.DurationSeconds, p.BestPower, p.AvgHeartRate)
+				avg_hr = EXCLUDED.avg_hr,
+				avg_speed = EXCLUDED.avg_speed,
+				avg_gradient = EXCLUDED.avg_gradient,
+				avg_cadence = EXCLUDED.avg_cadence,
+				avg_lr_balance = EXCLUDED.avg_lr_balance,
+				avg_torque_effectiveness = EXCLUDED.avg_torque_effectiveness
+		`, p.ActivityID, p.DurationSeconds, p.BestPower, p.AvgHeartRate,
+			p.AvgSpeed, p.AvgGradient, p.AvgCadence, p.AvgLRBalance, p.AvgTorqueEffectiveness)
 	}
 
 	results := r.pool.SendBatch(ctx, batch)
@@ -507,7 +513,8 @@ func (r *ActivityRepository) GetRoute(ctx context.Context, activityID uuid.UUID)
 // GetPowerCurve retrieves the power curve for an activity
 func (r *ActivityRepository) GetPowerCurve(ctx context.Context, activityID uuid.UUID) ([]model.PowerCurvePoint, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT activity_id, duration_seconds, best_power, avg_hr
+		SELECT activity_id, duration_seconds, best_power, avg_hr,
+		       avg_speed, avg_gradient, avg_cadence, avg_lr_balance, avg_torque_effectiveness
 		FROM activity_power_curve
 		WHERE activity_id = $1
 		ORDER BY duration_seconds ASC
@@ -520,7 +527,10 @@ func (r *ActivityRepository) GetPowerCurve(ctx context.Context, activityID uuid.
 	var points []model.PowerCurvePoint
 	for rows.Next() {
 		var p model.PowerCurvePoint
-		if err := rows.Scan(&p.ActivityID, &p.DurationSeconds, &p.BestPower, &p.AvgHeartRate); err != nil {
+		if err := rows.Scan(
+			&p.ActivityID, &p.DurationSeconds, &p.BestPower, &p.AvgHeartRate,
+			&p.AvgSpeed, &p.AvgGradient, &p.AvgCadence, &p.AvgLRBalance, &p.AvgTorqueEffectiveness,
+		); err != nil {
 			return nil, fmt.Errorf("failed to scan power curve point: %w", err)
 		}
 		points = append(points, p)

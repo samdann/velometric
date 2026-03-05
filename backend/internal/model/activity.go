@@ -111,10 +111,16 @@ type ActivityLap struct {
 
 // PowerCurvePoint represents a best effort at a specific duration
 type PowerCurvePoint struct {
-	ActivityID      uuid.UUID `json:"activityId"`
-	DurationSeconds int       `json:"durationSeconds"`
-	BestPower       int       `json:"bestPower"`
-	AvgHeartRate    *int      `json:"avgHeartRate,omitempty"`
+	ActivityID             uuid.UUID `json:"activityId"`
+	DurationSeconds        int       `json:"durationSeconds"`
+	BestPower              int       `json:"bestPower"`
+	AvgHeartRate           *int      `json:"avgHeartRate,omitempty"`
+	AvgSpeed               *float64  `json:"avgSpeed,omitempty"`               // m/s
+	AvgGradient            *float64  `json:"avgGradient,omitempty"`            // %
+	AvgCadence             *int      `json:"avgCadence,omitempty"`             // rpm
+	AvgLRBalance           *float64  `json:"avgLRBalance,omitempty"`           // %
+	AvgTorqueEffectiveness *float64  `json:"avgTorqueEffectiveness,omitempty"` // %
+	WattsPerKg             *float64  `json:"wattsPerKg,omitempty"`             // computed at read time
 }
 
 // ElevationPoint represents a distance/altitude/temperature point for the elevation profile

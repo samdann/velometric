@@ -17,6 +17,12 @@ interface PowerCurvePoint {
   durationSeconds: number;
   bestPower: number;
   avgHeartRate?: number;
+  avgSpeed?: number;
+  avgGradient?: number;
+  avgCadence?: number;
+  avgLRBalance?: number;
+  avgTorqueEffectiveness?: number;
+  wattsPerKg?: number;
 }
 
 interface PowerTabProps {
@@ -124,7 +130,13 @@ export function PowerTab({ activityId, activity }: PowerTabProps) {
     return powerCurve.find((p) => p.durationSeconds === duration) ?? null;
   }).filter((p) => p !== null) as PowerCurvePoint[];
 
-  const hasHR = tableRows.some((r) => r.avgHeartRate != null);
+  const hasHR       = tableRows.some((r) => r.avgHeartRate != null);
+  const hasWkg      = tableRows.some((r) => r.wattsPerKg != null);
+  const hasSpeed    = tableRows.some((r) => r.avgSpeed != null);
+  const hasGradient = tableRows.some((r) => r.avgGradient != null);
+  const hasCadence  = tableRows.some((r) => r.avgCadence != null);
+  const hasLR       = tableRows.some((r) => r.avgLRBalance != null);
+  const hasTE       = tableRows.some((r) => r.avgTorqueEffectiveness != null);
 
   return (
     <div className="mt-6 space-y-6">
@@ -209,35 +221,31 @@ export function PowerTab({ activityId, activity }: PowerTabProps) {
             <div className={curveView === "chart" ? "invisible" : ""}>
               <div className="overflow-hidden rounded-lg border border-border">
                 <table className="w-full">
-                  <thead className="bg-background-subtle">
+                  <thead className="bg-background-subtle text-xs font-medium text-foreground-muted">
                     <tr>
-                      <th className="px-4 py-2 text-left font-medium text-foreground-muted">
-                        Duration
-                      </th>
-                      <th className="px-4 py-2 text-right font-medium text-foreground-muted">
-                        Best Power
-                      </th>
-                      {hasHR && (
-                        <th className="px-4 py-2 text-right font-medium text-foreground-muted">
-                          Avg HR
-                        </th>
-                      )}
+                      <th className="px-4 py-2 text-left">Duration</th>
+                      <th className="px-4 py-2 text-right">Power</th>
+                      {hasWkg      && <th className="px-4 py-2 text-right">W/kg</th>}
+                      {hasHR       && <th className="px-4 py-2 text-right">Avg HR</th>}
+                      {hasSpeed    && <th className="px-4 py-2 text-right">Avg Speed</th>}
+                      {hasGradient && <th className="px-4 py-2 text-right">Avg Grad</th>}
+                      {hasCadence  && <th className="px-4 py-2 text-right">Avg Cad</th>}
+                      {hasLR       && <th className="px-4 py-2 text-right">L/R Bal</th>}
+                      {hasTE       && <th className="px-4 py-2 text-right">Torque Eff</th>}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody className="divide-y divide-border text-xs">
                     {tableRows.map((point) => (
                       <tr key={point.durationSeconds} className="hover:bg-background-subtle/50">
-                        <td className="px-4 py-2 font-mono">
-                          {DURATION_LABELS[point.durationSeconds]}
-                        </td>
-                        <td className="px-4 py-2 text-right font-mono text-power">
-                          {point.bestPower}w
-                        </td>
-                        {hasHR && (
-                          <td className="px-4 py-2 text-right font-mono text-heart-rate">
-                            {point.avgHeartRate != null ? `${point.avgHeartRate} bpm` : "—"}
-                          </td>
-                        )}
+                        <td className="px-4 py-2 font-mono">{DURATION_LABELS[point.durationSeconds]}</td>
+                        <td className="px-4 py-2 text-right font-mono text-power">{point.bestPower}w</td>
+                        {hasWkg      && <td className="px-4 py-2 text-right font-mono text-power">{point.wattsPerKg != null ? point.wattsPerKg.toFixed(2) : "—"}</td>}
+                        {hasHR       && <td className="px-4 py-2 text-right font-mono text-heart-rate">{point.avgHeartRate != null ? `${point.avgHeartRate}` : "—"}</td>}
+                        {hasSpeed    && <td className="px-4 py-2 text-right font-mono text-speed">{point.avgSpeed != null ? `${(point.avgSpeed * 3.6).toFixed(1)} km/h` : "—"}</td>}
+                        {hasGradient && <td className="px-4 py-2 text-right font-mono">{point.avgGradient != null ? `${point.avgGradient.toFixed(1)}%` : "—"}</td>}
+                        {hasCadence  && <td className="px-4 py-2 text-right font-mono text-cadence">{point.avgCadence != null ? `${point.avgCadence} rpm` : "—"}</td>}
+                        {hasLR       && <td className="px-4 py-2 text-right font-mono">{point.avgLRBalance != null ? `${point.avgLRBalance.toFixed(1)}/${(100 - point.avgLRBalance).toFixed(1)}` : "—"}</td>}
+                        {hasTE       && <td className="px-4 py-2 text-right font-mono">{point.avgTorqueEffectiveness != null ? `${point.avgTorqueEffectiveness.toFixed(1)}%` : "—"}</td>}
                       </tr>
                     ))}
                   </tbody>

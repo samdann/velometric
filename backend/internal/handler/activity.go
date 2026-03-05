@@ -203,6 +203,15 @@ func (h *Handler) GetPowerCurve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Attach W/kg if user weight is set
+	user, err := h.userService.GetProfile(r.Context())
+	if err == nil && user != nil && user.Weight != nil && *user.Weight > 0 {
+		for i := range curve {
+			wkg := float64(curve[i].BestPower) / *user.Weight
+			curve[i].WattsPerKg = &wkg
+		}
+	}
+
 	writeJSON(w, http.StatusOK, curve)
 }
 

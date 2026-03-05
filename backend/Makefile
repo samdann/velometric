@@ -16,7 +16,7 @@ MIGRATE_CMD = docker run --rm \
 	-path /migrations \
 	-database "postgres://postgres:postgres@db:5432/velometric?sslmode=disable"
 else
-MIGRATE_CMD = $(MIGRATE_CMD)
+MIGRATE_CMD = migrate -path migrations -database "$(DATABASE_URL)"
 endif
 
 # Run the API server
