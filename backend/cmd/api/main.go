@@ -60,6 +60,7 @@ func main() {
 
 	// API routes
 	r.Route("/api", func(r chi.Router) {
+		r.Get("/feed", h.GetFeed)
 		r.Get("/activities", h.ListActivities)
 		r.Post("/activities", h.CreateActivity)
 		r.Get("/activities/{id}", h.GetActivity)

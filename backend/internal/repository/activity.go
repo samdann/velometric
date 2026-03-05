@@ -57,19 +57,19 @@ func (r *ActivityRepository) Create(ctx context.Context, a *model.Activity) (uui
 			user_id, name, sport, start_time, duration, distance, elevation_gain,
 			avg_power, max_power, normalized_power, tss, intensity_factor, variability_index,
 			avg_hr, max_hr, avg_cadence, max_cadence, avg_speed, max_speed,
-			calories, avg_temperature, fit_file_url
+			calories, avg_temperature, fit_file_url, device_name, location
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7,
 			$8, $9, $10, $11, $12, $13,
 			$14, $15, $16, $17, $18, $19,
-			$20, $21, $22
+			$20, $21, $22, $23, $24
 		) ON CONFLICT ON CONSTRAINT unique_activity DO NOTHING
 		RETURNING id
 	`,
 		a.UserID, a.Name, a.Sport, a.StartTime, a.Duration, a.Distance, a.ElevationGain,
 		a.AvgPower, a.MaxPower, a.NormalizedPower, a.TSS, a.IntensityFactor, a.VariabilityIndex,
 		a.AvgHR, a.MaxHR, a.AvgCadence, a.MaxCadence, a.AvgSpeed, a.MaxSpeed,
-		a.Calories, a.AvgTemperature, a.FitFileURL,
+		a.Calories, a.AvgTemperature, a.FitFileURL, a.DeviceName, a.Location,
 	).Scan(&id)
 
 	if err == pgx.ErrNoRows {
@@ -88,13 +88,15 @@ func (r *ActivityRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.
 		SELECT id, user_id, name, sport, start_time, duration, distance, elevation_gain,
 			avg_power, max_power, normalized_power, tss, intensity_factor, variability_index,
 			avg_hr, max_hr, avg_cadence, max_cadence, avg_speed, max_speed,
-			calories, avg_temperature, fit_file_url, created_at, updated_at
+			calories, avg_temperature, fit_file_url, device_name, location,
+			created_at, updated_at
 		FROM activities WHERE id = $1
 	`, id).Scan(
 		&a.ID, &a.UserID, &a.Name, &a.Sport, &a.StartTime, &a.Duration, &a.Distance, &a.ElevationGain,
 		&a.AvgPower, &a.MaxPower, &a.NormalizedPower, &a.TSS, &a.IntensityFactor, &a.VariabilityIndex,
 		&a.AvgHR, &a.MaxHR, &a.AvgCadence, &a.MaxCadence, &a.AvgSpeed, &a.MaxSpeed,
-		&a.Calories, &a.AvgTemperature, &a.FitFileURL, &a.CreatedAt, &a.UpdatedAt,
+		&a.Calories, &a.AvgTemperature, &a.FitFileURL, &a.DeviceName, &a.Location,
+		&a.CreatedAt, &a.UpdatedAt,
 	)
 	if err == pgx.ErrNoRows {
 		return nil, nil
@@ -111,7 +113,8 @@ func (r *ActivityRepository) ListByUserID(ctx context.Context, userID uuid.UUID)
 		SELECT id, user_id, name, sport, start_time, duration, distance, elevation_gain,
 			avg_power, max_power, normalized_power, tss, intensity_factor, variability_index,
 			avg_hr, max_hr, avg_cadence, max_cadence, avg_speed, max_speed,
-			calories, avg_temperature, fit_file_url, created_at, updated_at
+			calories, avg_temperature, fit_file_url, device_name, location,
+			created_at, updated_at
 		FROM activities
 		WHERE user_id = $1
 		ORDER BY start_time DESC
@@ -128,7 +131,8 @@ func (r *ActivityRepository) ListByUserID(ctx context.Context, userID uuid.UUID)
 			&a.ID, &a.UserID, &a.Name, &a.Sport, &a.StartTime, &a.Duration, &a.Distance, &a.ElevationGain,
 			&a.AvgPower, &a.MaxPower, &a.NormalizedPower, &a.TSS, &a.IntensityFactor, &a.VariabilityIndex,
 			&a.AvgHR, &a.MaxHR, &a.AvgCadence, &a.MaxCadence, &a.AvgSpeed, &a.MaxSpeed,
-			&a.Calories, &a.AvgTemperature, &a.FitFileURL, &a.CreatedAt, &a.UpdatedAt,
+			&a.Calories, &a.AvgTemperature, &a.FitFileURL, &a.DeviceName, &a.Location,
+			&a.CreatedAt, &a.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan activity: %w", err)
@@ -144,7 +148,8 @@ func (r *ActivityRepository) ListByUserIDPaginated(ctx context.Context, userID u
 		SELECT id, user_id, name, sport, start_time, duration, distance, elevation_gain,
 			avg_power, max_power, normalized_power, tss, intensity_factor, variability_index,
 			avg_hr, max_hr, avg_cadence, max_cadence, avg_speed, max_speed,
-			calories, avg_temperature, fit_file_url, created_at, updated_at,
+			calories, avg_temperature, fit_file_url, device_name, location,
+			created_at, updated_at,
 			COUNT(*) OVER () AS total_count
 		FROM activities
 		WHERE user_id = $1
@@ -164,7 +169,8 @@ func (r *ActivityRepository) ListByUserIDPaginated(ctx context.Context, userID u
 			&a.ID, &a.UserID, &a.Name, &a.Sport, &a.StartTime, &a.Duration, &a.Distance, &a.ElevationGain,
 			&a.AvgPower, &a.MaxPower, &a.NormalizedPower, &a.TSS, &a.IntensityFactor, &a.VariabilityIndex,
 			&a.AvgHR, &a.MaxHR, &a.AvgCadence, &a.MaxCadence, &a.AvgSpeed, &a.MaxSpeed,
-			&a.Calories, &a.AvgTemperature, &a.FitFileURL, &a.CreatedAt, &a.UpdatedAt,
+			&a.Calories, &a.AvgTemperature, &a.FitFileURL, &a.DeviceName, &a.Location,
+			&a.CreatedAt, &a.UpdatedAt,
 			&total,
 		)
 		if err != nil {
@@ -596,6 +602,118 @@ func (r *ActivityRepository) GetPowerTimeSeries(ctx context.Context, activityID 
 		points = append(points, p)
 	}
 	return points, nil
+}
+
+// GetFeedActivities returns paginated activities with embedded mini-routes for the dashboard feed.
+// Routes are downsampled to at most 50 points per activity.
+func (r *ActivityRepository) GetFeedActivities(ctx context.Context, userID uuid.UUID, page, limit int) ([]model.FeedActivity, int, error) {
+	offset := (page - 1) * limit
+
+	// Step 1: fetch paginated activity rows joined with user name.
+	type actRow struct {
+		id             uuid.UUID
+		userName       string
+		startTime      time.Time
+		deviceName     *string
+		location       *string
+		name           string
+		distanceMeters float64
+		duration       int
+		elevationGain  float64
+		total          int
+	}
+
+	rows, err := r.pool.Query(ctx, `
+		SELECT a.id, u.name, a.start_time, a.device_name, a.location,
+		       a.name, a.distance, a.duration, a.elevation_gain,
+		       COUNT(*) OVER () AS total_count
+		FROM activities a
+		JOIN users u ON u.id = a.user_id
+		WHERE a.user_id = $1
+		ORDER BY a.start_time DESC
+		LIMIT $2 OFFSET $3
+	`, userID, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query feed activities: %w", err)
+	}
+	defer rows.Close()
+
+	var actRows []actRow
+	var total int
+	for rows.Next() {
+		var ar actRow
+		if err := rows.Scan(
+			&ar.id, &ar.userName, &ar.startTime, &ar.deviceName, &ar.location,
+			&ar.name, &ar.distanceMeters, &ar.duration, &ar.elevationGain,
+			&ar.total,
+		); err != nil {
+			return nil, 0, fmt.Errorf("failed to scan feed activity: %w", err)
+		}
+		total = ar.total
+		actRows = append(actRows, ar)
+	}
+	rows.Close()
+
+	if len(actRows) == 0 {
+		return make([]model.FeedActivity, 0), total, nil
+	}
+
+	// Step 2: collect IDs and batch-fetch mini-routes (sampled to ≤50 pts each).
+	ids := make([]uuid.UUID, len(actRows))
+	for i, ar := range actRows {
+		ids[i] = ar.id
+	}
+
+	routeRows, err := r.pool.Query(ctx, `
+		SELECT activity_id, lat, lon
+		FROM (
+			SELECT activity_id, lat, lon,
+			       ROW_NUMBER() OVER (PARTITION BY activity_id ORDER BY timestamp ASC) AS rn,
+			       COUNT(*) OVER (PARTITION BY activity_id) AS total
+			FROM activity_records
+			WHERE activity_id = ANY($1)
+			  AND lat IS NOT NULL
+			  AND lon IS NOT NULL
+		) sub
+		WHERE MOD(rn - 1, GREATEST(total / 50, 1)) = 0
+		ORDER BY activity_id, rn
+	`, ids)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query mini-routes: %w", err)
+	}
+	defer routeRows.Close()
+
+	routeMap := make(map[uuid.UUID][]model.RoutePoint)
+	for routeRows.Next() {
+		var aid uuid.UUID
+		var p model.RoutePoint
+		if err := routeRows.Scan(&aid, &p.Lat, &p.Lon); err != nil {
+			return nil, 0, fmt.Errorf("failed to scan route point: %w", err)
+		}
+		routeMap[aid] = append(routeMap[aid], p)
+	}
+
+	// Step 3: assemble.
+	feed := make([]model.FeedActivity, len(actRows))
+	for i, ar := range actRows {
+		pts := routeMap[ar.id]
+		if pts == nil {
+			pts = make([]model.RoutePoint, 0)
+		}
+		feed[i] = model.FeedActivity{
+			ID:              ar.id,
+			UserName:        ar.userName,
+			StartTime:       ar.startTime,
+			DeviceName:      ar.deviceName,
+			Location:        ar.location,
+			Name:            ar.name,
+			DistanceKm:      ar.distanceMeters / 1000.0,
+			DurationSeconds: ar.duration,
+			ElevationGainM:  ar.elevationGain,
+			Route:           pts,
+		}
+	}
+	return feed, total, nil
 }
 
 func (r *ActivityRepository) DeleteActivity(ctx context.Context, id uuid.UUID) error {

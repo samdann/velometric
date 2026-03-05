@@ -53,6 +53,11 @@ func Parse(r io.Reader) (*ParsedActivity, error) {
 		Events:  make([]Event, 0, len(activity.Events)),
 	}
 
+	// Extract device name from file_id ProductName (free-form model string set by device)
+	if name := strings.TrimSpace(fitFile.FileId.ProductName); name != "" {
+		parsed.DeviceName = &name
+	}
+
 	// Get activity name, start time, and summary data from session
 	if len(activity.Sessions) > 0 {
 		session := activity.Sessions[0]

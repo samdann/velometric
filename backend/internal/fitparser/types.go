@@ -4,12 +4,13 @@ import "time"
 
 // ParsedActivity represents the complete parsed data from a FIT file
 type ParsedActivity struct {
-	Name      string
-	Sport     string
-	StartTime time.Time
-	Records   []Record
-	Laps      []Lap
-	Events    []Event
+	Name       string
+	Sport      string
+	StartTime  time.Time
+	DeviceName *string // from file_id ProductName
+	Records    []Record
+	Laps       []Lap
+	Events     []Event
 
 	// Session-level summary data (pre-computed by device)
 	TotalDistance       *float64 // meters

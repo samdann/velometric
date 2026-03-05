@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -169,14 +171,27 @@ func (s *ActivityService) ProcessFITFile(ctx context.Context, userID uuid.UUID, 
 		name = generateActivityName(parsed.Sport, parsed.StartTime)
 	}
 
+	// Attempt reverse geocoding from first GPS record (best-effort, non-fatal)
+	var location *string
+	for _, rec := range parsed.Records {
+		if rec.Lat != nil && rec.Lon != nil {
+			if loc, err := reverseGeocode(ctx, *rec.Lat, *rec.Lon); err == nil && loc != "" {
+				location = &loc
+			}
+			break
+		}
+	}
+
 	// Create activity model
 	activity := &model.Activity{
-		UserID:    userID,
-		Name:      name,
-		Sport:     parsed.Sport,
-		StartTime: parsed.StartTime,
-		Duration:  duration,
-		Distance:  distance,
+		UserID:     userID,
+		Name:       name,
+		Sport:      parsed.Sport,
+		StartTime:  parsed.StartTime,
+		Duration:   duration,
+		Distance:   distance,
+		DeviceName: parsed.DeviceName,
+		Location:   location,
 		ElevationGain: elevationGain,
 	}
 
@@ -724,4 +739,55 @@ func classifyPowerZone(powerPct float64, zones []model.PowerZone) int {
 
 func (s *ActivityService) DeleteActivity(ctx context.Context, id uuid.UUID) error {
 	return s.repo.DeleteActivity(ctx, id)
+}
+
+// GetFeed returns a paginated feed of activities with embedded mini-routes.
+func (s *ActivityService) GetFeed(ctx context.Context, userID uuid.UUID, page, limit int) ([]model.FeedActivity, int, error) {
+	return s.repo.GetFeedActivities(ctx, userID, page, limit)
+}
+
+// reverseGeocode resolves a GPS coordinate to a human-readable location string
+// using the Nominatim OpenStreetMap API. Returns an empty string on failure.
+func reverseGeocode(ctx context.Context, lat, lon float64) (string, error) {
+	url := fmt.Sprintf("https://nominatim.openstreetmap.org/reverse?format=json&lat=%.6f&lon=%.6f", lat, lon)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "Velometric/1.0")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Address struct {
+			City    string `json:"city"`
+			Town    string `json:"town"`
+			Village string `json:"village"`
+			County  string `json:"county"`
+			Country string `json:"country"`
+		} `json:"address"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+
+	city := result.Address.City
+	if city == "" {
+		city = result.Address.Town
+	}
+	if city == "" {
+		city = result.Address.Village
+	}
+	if city == "" {
+		city = result.Address.County
+	}
+	if city != "" && result.Address.Country != "" {
+		return city + ", " + result.Address.Country, nil
+	}
+	return city, nil
 }

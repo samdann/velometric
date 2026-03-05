@@ -24,6 +24,26 @@ export interface Activity {
   createdAt: string;
 }
 
+export interface FeedActivity {
+  id: string;
+  userName: string;
+  startTime: string;
+  deviceName?: string;
+  location?: string;
+  name: string;
+  distanceKm: number;
+  durationSeconds: number;
+  elevationGainM: number;
+  route: { lat: number; lon: number }[];
+}
+
+export interface PaginatedFeed {
+  activities: FeedActivity[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface PaginatedActivities {
   activities: Activity[];
   total: number;
@@ -116,6 +136,15 @@ class ApiClient {
       throw new Error(error.error || "Upload failed");
     }
 
+    return response.json();
+  }
+
+  async getFeed(page = 1, limit = 25): Promise<PaginatedFeed> {
+    const response = await fetch(`${this.baseUrl}/api/feed?page=${page}&limit=${limit}`);
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to fetch feed");
+    }
     return response.json();
   }
 

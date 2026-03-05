@@ -417,6 +417,52 @@ func (h *Handler) GetHRZoneDistribution(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, distribution)
 }
 
+type FeedResponse struct {
+	Activities interface{} `json:"activities"`
+	Total      int         `json:"total"`
+	Page       int         `json:"page"`
+	Limit      int         `json:"limit"`
+}
+
+func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
+	if !h.HasDB() {
+		writeJSON(w, http.StatusOK, FeedResponse{Activities: []interface{}{}, Total: 0, Page: 1, Limit: 25})
+		return
+	}
+
+	userID, err := getDemoUserID(r.Context(), h.db)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get user")
+		return
+	}
+
+	page := 1
+	limit := 25
+	if p := r.URL.Query().Get("page"); p != "" {
+		if v, err := strconv.Atoi(p); err == nil && v > 0 {
+			page = v
+		}
+	}
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if v, err := strconv.Atoi(l); err == nil && (v == 10 || v == 25 || v == 50) {
+			limit = v
+		}
+	}
+
+	feed, total, err := h.activityService.GetFeed(r.Context(), userID, page, limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to fetch feed")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, FeedResponse{
+		Activities: feed,
+		Total:      total,
+		Page:       page,
+		Limit:      limit,
+	})
+}
+
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	b, err := json.Marshal(data)
 	if err != nil {

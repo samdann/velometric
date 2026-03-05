@@ -44,8 +44,26 @@ type Activity struct {
 	AvgTemperature *float64 `json:"avgTemperature,omitempty"`
 	FitFileURL     *string  `json:"fitFileUrl,omitempty"`
 
+	// Device & location (optional, extracted at upload time)
+	DeviceName *string `json:"deviceName,omitempty"`
+	Location   *string `json:"location,omitempty"`
+
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// FeedActivity is the per-card payload for the dashboard feed.
+type FeedActivity struct {
+	ID              uuid.UUID    `json:"id"`
+	UserName        string       `json:"userName"`
+	StartTime       time.Time    `json:"startTime"`
+	DeviceName      *string      `json:"deviceName,omitempty"`
+	Location        *string      `json:"location,omitempty"`
+	Name            string       `json:"name"`
+	DistanceKm      float64      `json:"distanceKm"`
+	DurationSeconds int          `json:"durationSeconds"`
+	ElevationGainM  float64      `json:"elevationGainM"`
+	Route           []RoutePoint `json:"route"`
 }
 
 // ActivityRecord represents a single time-series data point
