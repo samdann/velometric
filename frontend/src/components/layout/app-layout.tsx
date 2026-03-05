@@ -1,7 +1,6 @@
 "use client";
 
-import { SidebarProvider } from "@/hooks/use-sidebar";
-import { Sidebar } from "./sidebar";
+import { Topbar } from "./topbar";
 import { MainContent } from "./main-content";
 
 interface AppLayoutProps {
@@ -10,11 +9,9 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen">
-        <Sidebar />
-        <MainContent>{children}</MainContent>
-      </div>
-    </SidebarProvider>
+    <div className="flex min-h-screen flex-col w-full max-w-[1100px] mx-auto">
+      <Topbar />
+      <MainContent>{children}</MainContent>
+    </div>
   );
 }

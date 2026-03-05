@@ -13,7 +13,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 flex h-screen flex-col bg-background-subtle transition-[width] duration-200"
+        "sticky top-0 z-40 flex h-screen flex-shrink-0 flex-col bg-background-subtle transition-[width] duration-200"
       )}
       style={{
         width: isCollapsed ? SIDEBAR_WIDTH.collapsed : SIDEBAR_WIDTH.expanded,
