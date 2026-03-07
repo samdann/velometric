@@ -114,7 +114,7 @@ export default function ActivitiesPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState<PageSize>(25);
+  const [limit, setLimit] = useState<PageSize>(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<Activity | null>(null);
@@ -278,85 +278,99 @@ export default function ActivitiesPage() {
             </div>
 
             {/* Pagination controls */}
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-foreground-muted">
-                <span>Show</span>
-                {PAGE_SIZE_OPTIONS.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => handleLimitChange(size)}
-                    className={`px-2 py-1 rounded text-xs font-mono border transition-colors ${
-                      limit === size
-                        ? "border-primary text-primary bg-primary/10"
-                        : "border-border text-foreground-muted hover:border-border-hover"
-                    }`}
+            <div className="mt-6 flex items-center justify-between gap-4">
+              {/* Left: rows per page + record range */}
+              <div className="flex items-center gap-3 text-xs text-foreground-muted font-mono">
+                <label className="flex items-center gap-2">
+                  <span>Rows</span>
+                  <select
+                    value={limit}
+                    onChange={(e) => handleLimitChange(Number(e.target.value) as PageSize)}
+                    className="bg-surface border border-border rounded-md px-2 py-1 text-xs font-mono text-foreground focus:outline-none focus:border-primary cursor-pointer transition-colors hover:border-border-hover"
                   >
-                    {size}
-                  </button>
-                ))}
-                <span>per page</span>
-                {!loading && (
-                  <span className="ml-3">
-                    {Math.min((page - 1) * limit + 1, total)}–{Math.min(page * limit, total)} of {total}
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                </label>
+                {!loading && total > 0 && (
+                  <span className="text-foreground-muted/60 tabular-nums">
+                    {Math.min((page - 1) * limit + 1, total)}–{Math.min(page * limit, total)}{" "}
+                    <span className="text-foreground-muted/40">of</span> {total}
                   </span>
                 )}
               </div>
 
+              {/* Right: page nav */}
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setPage(1)}
                   disabled={page === 1 || loading}
-                  className="px-2 py-1 rounded border border-border text-xs text-foreground-muted hover:border-border-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="First page"
+                  className="h-7 w-7 flex items-center justify-center rounded-md text-foreground-muted hover:text-foreground hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
-                  «
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 9L5 6l4-3"/><line x1="3" y1="3" x2="3" y2="9"/>
+                  </svg>
                 </button>
                 <button
                   onClick={() => setPage((p) => p - 1)}
                   disabled={page === 1 || loading}
-                  className="px-2 py-1 rounded border border-border text-xs text-foreground-muted hover:border-border-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="Previous page"
+                  className="h-7 w-7 flex items-center justify-center rounded-md text-foreground-muted hover:text-foreground hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
-                  ‹
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M7.5 9L4 6l3.5-3"/>
+                  </svg>
                 </button>
 
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-                  .reduce<(number | "…")[]>((acc, p, i, arr) => {
-                    if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…");
-                    acc.push(p);
-                    return acc;
-                  }, [])
-                  .map((item, i) =>
-                    item === "…" ? (
-                      <span key={`ellipsis-${i}`} className="px-2 py-1 text-xs text-foreground-muted">…</span>
-                    ) : (
-                      <button
-                        key={item}
-                        onClick={() => setPage(item as number)}
-                        disabled={loading}
-                        className={`px-2 py-1 rounded border text-xs font-mono transition-colors disabled:cursor-not-allowed ${
-                          page === item
-                            ? "border-primary text-primary bg-primary/10"
-                            : "border-border text-foreground-muted hover:border-border-hover"
-                        }`}
-                      >
-                        {item}
-                      </button>
-                    )
-                  )}
+                <div className="flex items-center gap-1 mx-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                    .reduce<(number | "…")[]>((acc, p, i, arr) => {
+                      if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…");
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((item, i) =>
+                      item === "…" ? (
+                        <span key={`ellipsis-${i}`} className="w-7 text-center text-xs text-foreground-muted/40 font-mono">…</span>
+                      ) : (
+                        <button
+                          key={item}
+                          onClick={() => setPage(item as number)}
+                          disabled={loading}
+                          className={`h-7 min-w-7 px-1 rounded-md text-xs font-mono transition-colors disabled:cursor-not-allowed ${
+                            page === item
+                              ? "bg-primary/15 text-primary font-semibold"
+                              : "text-foreground-muted hover:text-foreground hover:bg-surface-hover"
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      )
+                    )}
+                </div>
 
                 <button
                   onClick={() => setPage((p) => p + 1)}
                   disabled={page === totalPages || loading}
-                  className="px-2 py-1 rounded border border-border text-xs text-foreground-muted hover:border-border-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="Next page"
+                  className="h-7 w-7 flex items-center justify-center rounded-md text-foreground-muted hover:text-foreground hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
-                  ›
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4.5 9L8 6l-3.5-3"/>
+                  </svg>
                 </button>
                 <button
                   onClick={() => setPage(totalPages)}
                   disabled={page === totalPages || loading}
-                  className="px-2 py-1 rounded border border-border text-xs text-foreground-muted hover:border-border-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="Last page"
+                  className="h-7 w-7 flex items-center justify-center rounded-md text-foreground-muted hover:text-foreground hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
-                  »
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 9l4-3-4-3"/><line x1="9" y1="3" x2="9" y2="9"/>
+                  </svg>
                 </button>
               </div>
             </div>
