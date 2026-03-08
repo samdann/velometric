@@ -6,11 +6,13 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
 	"github.com/velometric/backend/internal/fitparser"
+	"github.com/velometric/backend/internal/model"
 	"github.com/velometric/backend/internal/repository"
 )
 
@@ -59,7 +61,37 @@ func (h *Handler) ListActivities(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	activities, total, err := h.activityService.ListActivitiesPaginated(r.Context(), userID, page, limit)
+	q := r.URL.Query()
+	filter := model.ActivityFilter{
+		Query:     q.Get("q"),
+		Sport:     q.Get("sport"),
+		SortBy:    q.Get("sort_by"),
+		SortOrder: q.Get("sort_order"),
+		DateFrom:  time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+		DateTo:    time.Now().AddDate(0, 0, 1),
+	}
+	if df := q.Get("date_from"); df != "" {
+		if t, err := time.Parse("2006-01-02", df); err == nil {
+			filter.DateFrom = t
+		}
+	}
+	if dt := q.Get("date_to"); dt != "" {
+		if t, err := time.Parse("2006-01-02", dt); err == nil {
+			filter.DateTo = t.Add(24*time.Hour - time.Second)
+		}
+	}
+	if v := q.Get("dist_min"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 {
+			filter.DistanceMinKm = &f
+		}
+	}
+	if v := q.Get("dist_max"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 {
+			filter.DistanceMaxKm = &f
+		}
+	}
+
+	activities, total, err := h.activityService.ListActivitiesPaginated(r.Context(), userID, page, limit, filter)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to list activities")
 		return

@@ -142,9 +142,39 @@ func (r *ActivityRepository) ListByUserID(ctx context.Context, userID uuid.UUID)
 	return activities, nil
 }
 
-func (r *ActivityRepository) ListByUserIDPaginated(ctx context.Context, userID uuid.UUID, page, limit int) ([]*model.Activity, int, error) {
+// sortColumnMap maps allowed sort keys to SQL column names.
+var sortColumnMap = map[string]string{
+	"date":      "start_time",
+	"distance":  "distance",
+	"duration":  "duration",
+	"elevation": "elevation_gain",
+}
+
+func (r *ActivityRepository) ListByUserIDPaginated(ctx context.Context, userID uuid.UUID, page, limit int, f model.ActivityFilter) ([]*model.Activity, int, error) {
 	offset := (page - 1) * limit
-	rows, err := r.pool.Query(ctx, `
+
+	// Safe ORDER BY — allowlist only
+	col, ok := sortColumnMap[f.SortBy]
+	if !ok {
+		col = "start_time"
+	}
+	dir := "DESC"
+	if f.SortOrder == "asc" {
+		dir = "ASC"
+	}
+
+	// Distance filter is stored in metres in DB; inputs are km
+	var distMin, distMax float64
+	distMin = 0
+	distMax = 1e9
+	if f.DistanceMinKm != nil {
+		distMin = *f.DistanceMinKm * 1000
+	}
+	if f.DistanceMaxKm != nil {
+		distMax = *f.DistanceMaxKm * 1000
+	}
+
+	query := fmt.Sprintf(`
 		SELECT id, user_id, name, sport, start_time, duration, distance, elevation_gain,
 			avg_power, max_power, normalized_power, tss, intensity_factor, variability_index,
 			avg_hr, max_hr, avg_cadence, max_cadence, avg_speed, max_speed,
@@ -153,9 +183,22 @@ func (r *ActivityRepository) ListByUserIDPaginated(ctx context.Context, userID u
 			COUNT(*) OVER () AS total_count
 		FROM activities
 		WHERE user_id = $1
-		ORDER BY start_time DESC
-		LIMIT $2 OFFSET $3
-	`, userID, limit, offset)
+			AND ($2 = '' OR name ILIKE '%%' || $2 || '%%')
+			AND ($3 = '' OR LOWER(sport) = LOWER($3))
+			AND start_time >= $4
+			AND start_time <= $5
+			AND distance >= $6
+			AND distance <= $7
+		ORDER BY %s %s
+		LIMIT $8 OFFSET $9
+	`, col, dir)
+
+	rows, err := r.pool.Query(ctx, query,
+		userID, f.Query, f.Sport,
+		f.DateFrom, f.DateTo,
+		distMin, distMax,
+		limit, offset,
+	)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to list activities: %w", err)
 	}

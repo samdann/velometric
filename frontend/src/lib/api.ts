@@ -51,6 +51,17 @@ export interface PaginatedActivities {
   limit: number;
 }
 
+export interface ActivityFilters {
+  q?: string;
+  sport?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  distMin?: number;
+  distMax?: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}
+
 export interface UploadResponse {
   id: string;
   message: string;
@@ -148,8 +159,17 @@ class ApiClient {
     return response.json();
   }
 
-  async getActivities(page = 1, limit = 25): Promise<PaginatedActivities> {
-    const response = await fetch(`${this.baseUrl}/api/activities?page=${page}&limit=${limit}`);
+  async getActivities(page = 1, limit = 25, filters: ActivityFilters = {}): Promise<PaginatedActivities> {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (filters.q) params.set("q", filters.q);
+    if (filters.sport) params.set("sport", filters.sport);
+    if (filters.dateFrom) params.set("date_from", filters.dateFrom);
+    if (filters.dateTo) params.set("date_to", filters.dateTo);
+    if (filters.distMin != null) params.set("dist_min", String(filters.distMin));
+    if (filters.distMax != null) params.set("dist_max", String(filters.distMax));
+    if (filters.sortBy) params.set("sort_by", filters.sortBy);
+    if (filters.sortOrder) params.set("sort_order", filters.sortOrder);
+    const response = await fetch(`${this.baseUrl}/api/activities?${params.toString()}`);
 
     if (!response.ok) {
       const error: ApiError = await response.json();

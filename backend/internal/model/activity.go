@@ -199,3 +199,15 @@ type PowerZoneDistributionPoint struct {
 	Seconds    float64  `json:"seconds"`
 	Percentage float64  `json:"percentage"`
 }
+
+// ActivityFilter holds optional filter/sort parameters for listing activities.
+type ActivityFilter struct {
+	Query         string     // text search on name (ILIKE)
+	Sport         string     // exact sport match
+	DateFrom      time.Time  // inclusive lower bound
+	DateTo        time.Time  // inclusive upper bound
+	DistanceMinKm *float64   // min distance in km (nil = no lower bound)
+	DistanceMaxKm *float64   // max distance in km (nil = no upper bound)
+	SortBy        string     // "date" | "distance" | "duration" | "elevation"
+	SortOrder     string     // "asc" | "desc"
+}
