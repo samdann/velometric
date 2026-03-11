@@ -137,6 +137,46 @@ paths:
                 items:
                   $ref: "#/components/schemas/ActivityLap"
 
+  /api/strava/status:
+    get:
+      summary: Get Strava integration status
+      description: Returns whether a Strava access token is configured on the server.
+      tags: [Strava]
+      responses:
+        "200":
+          description: Status object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  configured:
+                    type: boolean
+
+  /api/strava/sync:
+    post:
+      summary: Sync activities from Strava
+      description: |
+        Fetches activities from the Strava API and caches them locally.
+        For each Strava activity, attempts to match it against an existing local (FIT-uploaded)
+        activity by start time (±30 s) and distance (±1%). Matched activities are updated with
+        the Strava title and sport. Unmatched activities that are close but outside the strict
+        window are returned as candidates for manual review.
+      tags: [Strava]
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StravaSyncResult"
+        "500":
+          description: Sync failed (e.g. invalid token, Strava API error)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /api/internal/batch-import:
     post:
       summary: Start batch FIT import
@@ -420,6 +460,43 @@ components:
               type: object
               additionalProperties:
                 type: integer
+
+    StravaSyncResult:
+      type: object
+      properties:
+        updatedCount:
+          type: integer
+          description: Number of local activities updated from Strava metadata
+        createdCount:
+          type: integer
+          description: Number of Strava activities with no local match
+        candidates:
+          type: array
+          description: Activities that are close but outside the strict matching window
+          items:
+            $ref: "#/components/schemas/StravaMatchCandidate"
+        error:
+          type: string
+
+    StravaMatchCandidate:
+      type: object
+      properties:
+        stravaId:
+          type: integer
+          format: int64
+        stravaTitle:
+          type: string
+        localId:
+          type: string
+          format: uuid
+        localTitle:
+          type: string
+        timeDiffSecs:
+          type: integer
+          description: Absolute difference in start time between the two activities (seconds)
+        distanceDiffPct:
+          type: number
+          description: Relative distance difference as a fraction (0.05 = 5%)
 
     Error:
       type: object

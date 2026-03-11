@@ -211,3 +211,26 @@ type ActivityFilter struct {
 	SortBy        string     // "date" | "distance" | "duration" | "elevation"
 	SortOrder     string     // "asc" | "desc"
 }
+
+// StravaActivity represents cached data from Strava API
+type StravaActivity struct {
+	ID           uuid.UUID              `json:"id"`
+	UserID       uuid.UUID              `json:"userId"`
+	StravaID     int64                  `json:"stravaId"`
+	Title        *string                `json:"title,omitempty"`
+	ActivityType *string                `json:"activityType,omitempty"`
+	StartTime    time.Time              `json:"startTime"`
+	Distance     *float64               `json:"distance,omitempty"` // meters
+	IsPrivate    bool                   `json:"isPrivate"`
+	IsFlagged    bool                   `json:"isFlagged"`
+	RawJSON      map[string]interface{} `json:"rawJson,omitempty"`
+	SyncedAt     time.Time              `json:"syncedAt"`
+}
+
+// StravaMatchCandidate represents a potential match between a Strava activity and a local one
+type StravaMatchCandidate struct {
+	StravaActivity  *StravaActivity
+	LocalActivity   *Activity
+	TimeDiffSecs    int64
+	DistanceDiffPct float64
+}

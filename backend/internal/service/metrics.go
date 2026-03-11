@@ -32,8 +32,8 @@ func ComputeNormalizedPower(powers []int) int {
 	}
 	avgFourth := sumFourth / float64(len(rollingAvgs))
 
-	// Take 4th root
-	return int(math.Pow(avgFourth, 0.25))
+	// Take 4th root (Round, not truncate — avoids off-by-one from float precision)
+	return int(math.Round(math.Pow(avgFourth, 0.25)))
 }
 
 // ComputeTSS calculates Training Stress Score

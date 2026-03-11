@@ -9,6 +9,11 @@ import (
 	"github.com/velometric/backend/internal/database"
 )
 
+// GetDemoUserID is the exported version of getDemoUserID for use outside the package.
+func GetDemoUserID(ctx context.Context, db *database.DB) (uuid.UUID, error) {
+	return getDemoUserID(ctx, db)
+}
+
 // getDemoUserID returns the demo user ID for development
 // TODO: Replace with proper auth
 func getDemoUserID(ctx context.Context, db *database.DB) (uuid.UUID, error) {

@@ -11,12 +11,14 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 
 	"github.com/velometric/backend/internal/config"
 	"github.com/velometric/backend/internal/database"
 	"github.com/velometric/backend/internal/handler"
 	"github.com/velometric/backend/internal/middleware"
+	"github.com/velometric/backend/internal/service"
 )
 
 func main() {
@@ -41,7 +43,16 @@ func main() {
 	}
 
 	// Create handlers with dependencies
-	h := handler.New(db)
+	h := handler.New(db, cfg)
+
+	// Strava service and handler
+	var stravaHandler *handler.StravaHandler
+	if db != nil {
+		stravaService := service.NewStravaService(cfg, db.Pool)
+		stravaHandler = handler.NewStravaHandler(stravaService, func(ctx context.Context) (uuid.UUID, error) {
+			return handler.GetDemoUserID(ctx, db)
+		})
+	}
 
 	r := chi.NewRouter()
 
@@ -84,6 +95,12 @@ func main() {
 		r.Put("/user/hr-zones", h.SaveHRZones)
 		r.Get("/user/power-zones", h.GetPowerZones)
 		r.Put("/user/power-zones", h.SavePowerZones)
+
+		// Strava routes
+		if stravaHandler != nil {
+			r.Post("/strava/sync", stravaHandler.Sync)
+			r.Get("/strava/status", stravaHandler.GetStatus)
+		}
 	})
 
 	// Server setup
