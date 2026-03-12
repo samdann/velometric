@@ -1,0 +1,21 @@
+#!/bin/sh
+# Pre-commit hook: run backend tests only when backend files are staged.
+# Install once per clone: git config core.hooksPath .githooks
+
+if ! git diff --cached --name-only | grep -q "^backend/"; then
+  exit 0
+fi
+
+BACKEND_DIR="$(git rev-parse --show-toplevel)/backend"
+
+echo "Running backend tests..."
+cd "$BACKEND_DIR" && go test ./... 2>&1
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "Tests failed. Commit aborted."
+  echo "Fix the failing tests or use 'git commit --no-verify' to skip (not recommended)."
+  exit 1
+fi
+
+echo "All tests passed."
