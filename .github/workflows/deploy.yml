@@ -10,7 +10,23 @@ env:
   BACKEND_IMAGE: ghcr.io/samdann/velometric-backend
 
 jobs:
-  build-and-deploy:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Run backend tests
+        working-directory: backend
+        run: go test ./...
+
+  build:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -49,6 +65,14 @@ jobs:
             NEXT_PUBLIC_API_URL=http://${{ secrets.SERVER_IP }}:8080
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Sync server files
         uses: appleboy/scp-action@v1
