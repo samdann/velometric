@@ -1,9 +1,6 @@
 "use client";
 
-import Map, { Source, Layer } from "react-map-gl/maplibre";
-import type { LayerSpecification } from "maplibre-gl";
 import type { FeedActivity } from "@/lib/api";
-import "maplibre-gl/dist/maplibre-gl.css";
 
 function formatRelativeDate(iso: string): string {
   const date = new Date(iso);
@@ -31,14 +28,6 @@ function formatDuration(seconds: number): string {
   return `${m}m ${s.toString().padStart(2, "0")}s`;
 }
 
-const routeLayer: LayerSpecification = {
-  id: "route",
-  type: "line",
-  source: "route",
-  layout: { "line-join": "round", "line-cap": "round" },
-  paint: { "line-color": "#F97316", "line-width": 2.5, "line-opacity": 0.9 },
-};
-
 function RoutePreview({ points }: { points: { lat: number; lon: number }[] }) {
   if (points.length < 2) {
     return (
@@ -48,37 +37,34 @@ function RoutePreview({ points }: { points: { lat: number; lon: number }[] }) {
     );
   }
 
-  const coords: [number, number][] = points.map((p) => [p.lon, p.lat]);
-  const lons = coords.map((c) => c[0]);
-  const lats = coords.map((c) => c[1]);
-  const bounds: [[number, number], [number, number]] = [
-    [Math.min(...lons), Math.min(...lats)],
-    [Math.max(...lons), Math.max(...lats)],
-  ];
+  const W = 500;
+  const H = 250;
+  const PAD = 16;
 
-  const geojson: GeoJSON.FeatureCollection = {
-    type: "FeatureCollection",
-    features: [
-      {
-        type: "Feature",
-        geometry: { type: "LineString", coordinates: coords },
-        properties: {},
-      },
-    ],
-  };
+  const lons = points.map((p) => p.lon);
+  const lats = points.map((p) => p.lat);
+  const minLon = Math.min(...lons);
+  const maxLon = Math.max(...lons);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const dLon = maxLon - minLon || 1e-6;
+  const dLat = maxLat - minLat || 1e-6;
+
+  const toX = (lon: number) => PAD + ((lon - minLon) / dLon) * (W - 2 * PAD);
+  const toY = (lat: number) => H - PAD - ((lat - minLat) / dLat) * (H - 2 * PAD);
+
+  const d = points
+    .map((p, i) => `${i === 0 ? "M" : "L"}${toX(p.lon).toFixed(1)},${toY(p.lat).toFixed(1)}`)
+    .join(" ");
 
   return (
-    <Map
-      mapStyle="https://tiles.openfreemap.org/styles/liberty"
-      initialViewState={{ bounds, fitBoundsOptions: { padding: 20 } }}
-      style={{ width: "100%", height: "100%" }}
-      interactive={false}
-      attributionControl={false}
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ width: "100%", height: "100%", display: "block" }}
     >
-      <Source id="route" type="geojson" data={geojson}>
-        <Layer {...routeLayer} />
-      </Source>
-    </Map>
+      <path d={d} fill="none" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
