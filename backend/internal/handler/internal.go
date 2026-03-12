@@ -53,7 +53,7 @@ func (h *Handler) StartBatchImport(w http.ResponseWriter, r *http.Request) {
 		importReq.To = &t
 	}
 
-	userID, err := getDemoUserID(r.Context(), h.db)
+	userID, err := h.resolveUserID(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to resolve user")
 		return

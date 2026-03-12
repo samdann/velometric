@@ -54,22 +54,9 @@ func (s *UserService) GetHRZones(ctx context.Context) (int, []model.HRZone, erro
 	return maxHR, zones, nil
 }
 
-// SaveHRZones accepts 4 boundary bpm values and saves 5 HR zones as percentages of maxHR.
-// Also updates the user's max_hr field.
-func (s *UserService) SaveHRZones(ctx context.Context, maxHR int, boundaries []int) ([]model.HRZone, error) {
-	if len(boundaries) != 4 {
-		return nil, fmt.Errorf("expected 4 boundaries, got %d", len(boundaries))
-	}
-	if maxHR <= 0 {
-		return nil, fmt.Errorf("max_hr must be positive")
-	}
-	u, err := s.repo.GetFirst(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.repo.UpdateMaxHR(ctx, u.ID, maxHR); err != nil {
-		return nil, err
-	}
+// buildHRZones converts 4 BPM boundaries into 5 HRZone structs as percentages of maxHR.
+// Zone 5 has no upper bound (MaxPercentage == nil).
+func buildHRZones(maxHR int, boundaries []int) []model.HRZone {
 	zones := make([]model.HRZone, 5)
 	prevPct := 0.0
 	for i := 0; i < 5; i++ {
@@ -89,6 +76,26 @@ func (s *UserService) SaveHRZones(ctx context.Context, maxHR int, boundaries []i
 			prevPct = *maxPct
 		}
 	}
+	return zones
+}
+
+// SaveHRZones accepts 4 boundary bpm values and saves 5 HR zones as percentages of maxHR.
+// Also updates the user's max_hr field.
+func (s *UserService) SaveHRZones(ctx context.Context, maxHR int, boundaries []int) ([]model.HRZone, error) {
+	if len(boundaries) != 4 {
+		return nil, fmt.Errorf("expected 4 boundaries, got %d", len(boundaries))
+	}
+	if maxHR <= 0 {
+		return nil, fmt.Errorf("max_hr must be positive")
+	}
+	u, err := s.repo.GetFirst(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.repo.UpdateMaxHR(ctx, u.ID, maxHR); err != nil {
+		return nil, err
+	}
+	zones := buildHRZones(maxHR, boundaries)
 	if err := s.repo.UpsertHRZones(ctx, u.ID, zones); err != nil {
 		return nil, err
 	}
@@ -111,22 +118,9 @@ func (s *UserService) GetPowerZones(ctx context.Context) (int, []model.PowerZone
 	return ftp, zones, nil
 }
 
-// SavePowerZones accepts 6 boundary watt values and saves 7 power zones as percentages of FTP.
-// Also updates the user's ftp field.
-func (s *UserService) SavePowerZones(ctx context.Context, ftp int, boundaries []int) ([]model.PowerZone, error) {
-	if len(boundaries) != 6 {
-		return nil, fmt.Errorf("expected 6 boundaries, got %d", len(boundaries))
-	}
-	if ftp <= 0 {
-		return nil, fmt.Errorf("ftp must be positive")
-	}
-	u, err := s.repo.GetFirst(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.repo.UpdateFTP(ctx, u.ID, ftp); err != nil {
-		return nil, err
-	}
+// buildPowerZones converts 6 watt boundaries into 7 PowerZone structs as percentages of FTP.
+// Zone 7 has no upper bound (MaxPercentage == nil).
+func buildPowerZones(ftp int, boundaries []int) []model.PowerZone {
 	zones := make([]model.PowerZone, 7)
 	prevPct := 0.0
 	for i := 0; i < 7; i++ {
@@ -146,6 +140,26 @@ func (s *UserService) SavePowerZones(ctx context.Context, ftp int, boundaries []
 			prevPct = *maxPct
 		}
 	}
+	return zones
+}
+
+// SavePowerZones accepts 6 boundary watt values and saves 7 power zones as percentages of FTP.
+// Also updates the user's ftp field.
+func (s *UserService) SavePowerZones(ctx context.Context, ftp int, boundaries []int) ([]model.PowerZone, error) {
+	if len(boundaries) != 6 {
+		return nil, fmt.Errorf("expected 6 boundaries, got %d", len(boundaries))
+	}
+	if ftp <= 0 {
+		return nil, fmt.Errorf("ftp must be positive")
+	}
+	u, err := s.repo.GetFirst(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.repo.UpdateFTP(ctx, u.ID, ftp); err != nil {
+		return nil, err
+	}
+	zones := buildPowerZones(ftp, boundaries)
 	if err := s.repo.UpsertPowerZones(ctx, u.ID, zones); err != nil {
 		return nil, err
 	}

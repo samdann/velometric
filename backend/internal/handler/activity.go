@@ -42,7 +42,7 @@ func (h *Handler) ListActivities(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: Get user ID from auth context
 	// For now, use a hardcoded demo user ID
-	userID, err := getDemoUserID(r.Context(), h.db)
+	userID, err := h.resolveUserID(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to get user")
 		return
@@ -168,7 +168,7 @@ func (h *Handler) CreateActivity(w http.ResponseWriter, r *http.Request) {
 	log.Printf("CreateActivity: parsed %d records, %d laps", len(parsed.Records), len(parsed.Laps))
 
 	// TODO: Get user ID and FTP from auth context
-	userID, err := getDemoUserID(r.Context(), h.db)
+	userID, err := h.resolveUserID(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to get user")
 		return
@@ -462,7 +462,7 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := getDemoUserID(r.Context(), h.db)
+	userID, err := h.resolveUserID(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to get user")
 		return
