@@ -21,6 +21,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8081:8081"
+    env_file:
+      - path: ./backend/.env
+        required: false
     environment:
       - PORT=8081
       - FRONTEND_URL=http://localhost:3001

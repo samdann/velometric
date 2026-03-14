@@ -476,7 +476,7 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if l := r.URL.Query().Get("limit"); l != "" {
-		if v, err := strconv.Atoi(l); err == nil && (v == 10 || v == 25 || v == 50) {
+		if v, err := strconv.Atoi(l); err == nil && (v == 5 || v == 10 || v == 25 || v == 50) {
 			limit = v
 		}
 	}

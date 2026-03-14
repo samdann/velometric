@@ -163,6 +163,14 @@ paths:
         the Strava title and sport. Unmatched activities that are close but outside the strict
         window are returned as candidates for manual review.
       tags: [Strava]
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          description: Max number of Strava activities to process. Omit or set to 0 for all.
       responses:
         "200":
           description: Sync result

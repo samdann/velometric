@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Map, { Source, Layer, Marker, type MapRef } from "react-map-gl/maplibre";
-import type { LayerSpecification } from "maplibre-gl";
+import { MAP_STYLE, routeLayerSpec } from "@/lib/map-config";
 import {
   AreaChart,
   Area,
@@ -25,13 +25,6 @@ interface RoutePoint {
   distance?: number;
 }
 
-const routeLayer: LayerSpecification = {
-  id: "route",
-  type: "line",
-  source: "route",
-  layout: { "line-join": "round", "line-cap": "round" },
-  paint: { "line-color": "#F97316", "line-width": 3, "line-opacity": 0.9 },
-};
 
 function niceStep(range: number, steps: number[]): number {
   for (const s of steps) if (range / s <= 8) return s;
@@ -141,12 +134,12 @@ export function MapTab({ activityId }: MapTabProps) {
       <div className="overflow-hidden rounded-lg border border-border" style={{ height: 460 }}>
         <Map
           ref={mapRef}
-          mapStyle="https://tiles.openfreemap.org/styles/liberty"
+          mapStyle={MAP_STYLE}
           initialViewState={{ bounds, fitBoundsOptions: { padding: 40 } }}
           style={{ width: "100%", height: "100%" }}
         >
           <Source id="route" type="geojson" data={geojson}>
-            <Layer {...routeLayer} />
+            <Layer {...routeLayerSpec} />
           </Source>
           {marker && (
             <Marker longitude={marker.lon} latitude={marker.lat} anchor="center">

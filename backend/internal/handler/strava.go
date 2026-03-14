@@ -3,6 +3,8 @@ package handler
 import (
 	"context"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -43,18 +45,27 @@ type MatchCandidateResponse struct {
 // @Description Fetches activities from Strava and syncs them to local database
 // @Tags strava
 // @Produce json
+// @Param limit query int false "Max number of activities to process (0 = all). Useful for testing."
 // @Success 200 {object} SyncResult
 // @Router /api/strava/sync [post]
 func (h *StravaHandler) Sync(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	userID, err := h.getUserID(ctx)
+	userID, err := h.getUserID(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "user not found"})
 		return
 	}
 
-	result, err := h.stravaService.FetchAndSync(ctx, userID)
+	limit := 0
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if v, err := strconv.Atoi(l); err == nil && v > 0 {
+			limit = v
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	result, err := h.stravaService.FetchAndSync(ctx, userID, limit)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),

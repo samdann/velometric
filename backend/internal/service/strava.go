@@ -62,8 +62,9 @@ type SyncResult struct {
 	Error        string                       `json:"error,omitempty"`
 }
 
-// FetchAndSync fetches activities from Strava and syncs them to local DB
-func (s *StravaService) FetchAndSync(ctx context.Context, userID uuid.UUID) (*SyncResult, error) {
+// FetchAndSync fetches activities from Strava and syncs them to local DB.
+// If limit > 0, only the first N activities are processed (useful for testing).
+func (s *StravaService) FetchAndSync(ctx context.Context, userID uuid.UUID, limit int) (*SyncResult, error) {
 	if s.accessToken == "" {
 		return nil, fmt.Errorf("STRAVA_ACCESS_TOKEN not configured")
 	}
@@ -77,9 +78,12 @@ func (s *StravaService) FetchAndSync(ctx context.Context, userID uuid.UUID) (*Sy
 		return result, err
 	}
 
-	// Get local activities within the time range of fetched Strava activities
 	if len(stravaActivities) == 0 {
 		return result, nil
+	}
+
+	if limit > 0 && len(stravaActivities) > limit {
+		stravaActivities = stravaActivities[:limit]
 	}
 
 	// Find time bounds
