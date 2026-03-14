@@ -2,10 +2,11 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
-	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
 	"github.com/velometric/backend/internal/service"
@@ -14,7 +15,7 @@ import (
 // StravaHandler handles Strava-related HTTP requests
 type StravaHandler struct {
 	stravaService *service.StravaService
-	getUserID      func(ctx context.Context) (uuid.UUID, error)
+	getUserID     func(ctx context.Context) (uuid.UUID, error)
 }
 
 // NewStravaHandler creates a new Strava handler
@@ -22,31 +23,13 @@ func NewStravaHandler(stravaService *service.StravaService, getUserID func(ctx c
 	return &StravaHandler{stravaService: stravaService, getUserID: getUserID}
 }
 
-// SyncResult is the response for sync operations
-type SyncResult struct {
-	UpdatedCount int                      `json:"updatedCount"`
-	CreatedCount int                      `json:"createdCount"`
-	Candidates   []MatchCandidateResponse `json:"candidates"`
-	Error        string                   `json:"error,omitempty"`
-}
-
-// MatchCandidateResponse represents a potential match
-type MatchCandidateResponse struct {
-	StravaID        int64   `json:"stravaId"`
-	StravaTitle     string  `json:"stravaTitle"`
-	LocalID         string  `json:"localId,omitempty"`
-	LocalTitle      string  `json:"localTitle,omitempty"`
-	TimeDiffSecs    int64   `json:"timeDiffSecs"`
-	DistanceDiffPct float64 `json:"distanceDiffPct"`
-}
-
-// Sync triggers a Strava sync for the current user
-// @Summary Sync activities from Strava
-// @Description Fetches activities from Strava and syncs them to local database
+// Sync creates an async Strava sync job and returns it immediately.
+// @Summary Start async Strava sync
+// @Description Creates a sync job and starts processing in background
 // @Tags strava
 // @Produce json
-// @Param limit query int false "Max number of activities to process (0 = all). Useful for testing."
-// @Success 200 {object} SyncResult
+// @Param limit query int false "Max number of activities to process (0 = all)"
+// @Success 202 {object} model.StravaSyncJob
 // @Router /api/strava/sync [post]
 func (h *StravaHandler) Sync(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.getUserID(r.Context())
@@ -62,48 +45,68 @@ func (h *StravaHandler) Sync(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	result, err := h.stravaService.FetchAndSync(ctx, userID, limit)
+	job, err := h.stravaService.StartSync(r.Context(), userID, limit)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{
-			"error": err.Error(),
-		})
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 
-	// Convert to response format
-	response := SyncResult{
-		UpdatedCount: result.UpdatedCount,
-		CreatedCount: result.CreatedCount,
-		Candidates:   make([]MatchCandidateResponse, 0, len(result.Candidates)),
+	writeJSON(w, http.StatusAccepted, job)
+}
+
+// GetJob returns the current state of a sync job.
+// @Summary Get sync job status
+// @Tags strava
+// @Produce json
+// @Param id path string true "Job ID"
+// @Success 200 {object} model.StravaSyncJob
+// @Router /api/strava/jobs/{id} [get]
+func (h *StravaHandler) GetJob(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid job ID"})
+		return
 	}
 
-	for _, c := range result.Candidates {
-		resp := MatchCandidateResponse{
-			TimeDiffSecs:    c.TimeDiffSecs,
-			DistanceDiffPct: c.DistanceDiffPct,
-		}
-		if c.StravaActivity != nil {
-			resp.StravaID = c.StravaActivity.StravaID
-			if c.StravaActivity.Title != nil {
-				resp.StravaTitle = *c.StravaActivity.Title
-			}
-		}
-		if c.LocalActivity != nil {
-			resp.LocalID = c.LocalActivity.ID.String()
-			resp.LocalTitle = c.LocalActivity.Name
-		}
-		response.Candidates = append(response.Candidates, resp)
+	job, err := h.stravaService.GetJob(r.Context(), id)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "job not found"})
+		return
 	}
 
-	writeJSON(w, http.StatusOK, response)
+	writeJSON(w, http.StatusOK, job)
+}
+
+// RetryJob retries a failed sync job from its failure point.
+// @Summary Retry failed sync job
+// @Tags strava
+// @Produce json
+// @Param id path string true "Job ID"
+// @Success 202 {object} model.StravaSyncJob
+// @Router /api/strava/jobs/{id}/retry [post]
+func (h *StravaHandler) RetryJob(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid job ID"})
+		return
+	}
+
+	job, err := h.stravaService.RetrySync(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, service.ErrJobNotFound) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+			return
+		}
+		// Not in a failed state
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusAccepted, job)
 }
 
 // GetStatus returns the status of Strava integration
 // @Summary Get Strava integration status
-// @Description Returns whether Strava is configured
 // @Tags strava
 // @Produce json
 // @Success 200 {object} map[string]bool

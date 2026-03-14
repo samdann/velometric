@@ -155,13 +155,12 @@ paths:
 
   /api/strava/sync:
     post:
-      summary: Sync activities from Strava
+      summary: Start async Strava sync
       description: |
-        Fetches activities from the Strava API and caches them locally.
-        For each Strava activity, attempts to match it against an existing local (FIT-uploaded)
-        activity by start time (±30 s) and distance (±1%). Matched activities are updated with
-        the Strava title and sport. Unmatched activities that are close but outside the strict
-        window are returned as candidates for manual review.
+        Creates a sync job and immediately returns it (HTTP 202). The job runs in the background
+        through two phases: FETCHING (pull from Strava API → cache to DB) and PROCESSING
+        (match cached activities against local FIT-uploaded activities).
+        Poll `GET /api/strava/jobs/{id}` to track progress.
       tags: [Strava]
       parameters:
         - name: limit
@@ -172,14 +171,75 @@ paths:
             minimum: 1
           description: Max number of Strava activities to process. Omit or set to 0 for all.
       responses:
-        "200":
-          description: Sync result
+        "202":
+          description: Job created and running in background
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StravaSyncResult"
+                $ref: "#/components/schemas/StravaSyncJob"
         "500":
-          description: Sync failed (e.g. invalid token, Strava API error)
+          description: Failed to create job (e.g. token not configured)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/strava/jobs/{id}:
+    get:
+      summary: Get sync job status
+      description: Returns the current state of a Strava sync job, including counts and any error message.
+      tags: [Strava]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Job state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StravaSyncJob"
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/strava/jobs/{id}/retry:
+    post:
+      summary: Retry a failed sync job
+      description: |
+        Re-launches a job that is in `FETCHING_FAILED` or `PROCESSING_FAILED` state.
+        If the job failed during processing, the fetch phase is skipped and cached
+        `strava_activities` are reused.
+      tags: [Strava]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "202":
+          description: Job restarted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StravaSyncJob"
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Job is not in a failed state
           content:
             application/json:
               schema:
@@ -485,6 +545,53 @@ components:
             $ref: "#/components/schemas/StravaMatchCandidate"
         error:
           type: string
+
+    StravaSyncJob:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - PENDING
+            - FETCHING
+            - DATA_FETCHED
+            - FETCHING_FAILED
+            - PROCESSING
+            - DATA_PROCESSED
+            - PROCESSING_FAILED
+        limitCount:
+          type: integer
+          description: Max activities to process (0 = all)
+        fetchedCount:
+          type: integer
+          description: Number of activities fetched from Strava (set after FETCHING phase)
+        updatedCount:
+          type: integer
+          description: Number of local activities updated (set after PROCESSING phase)
+        createdCount:
+          type: integer
+          description: Number of unmatched Strava activities (set after PROCESSING phase)
+        errorMessage:
+          type: string
+          description: Present when job is in a failed state
+        startedAt:
+          type: string
+          format: date-time
+        fetchedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
 
     StravaMatchCandidate:
       type: object

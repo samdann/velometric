@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 	"time"
@@ -34,6 +36,8 @@ const (
 	rateLimitDelay   = 50 * time.Millisecond
 )
 
+var ErrJobNotFound = errors.New("strava sync job not found")
+
 // StravaService handles Strava API interactions
 type StravaService struct {
 	accessToken  string
@@ -54,106 +58,210 @@ func NewStravaService(cfg *config.Config, pool *pgxpool.Pool) *StravaService {
 	}
 }
 
-// SyncResult contains the results of a Strava sync
-type SyncResult struct {
-	UpdatedCount int                          `json:"updatedCount"`
-	CreatedCount int                          `json:"createdCount"`
-	Candidates   []model.StravaMatchCandidate `json:"candidates"`
-	Error        string                       `json:"error,omitempty"`
-}
-
-// FetchAndSync fetches activities from Strava and syncs them to local DB.
-// If limit > 0, only the first N activities are processed (useful for testing).
-func (s *StravaService) FetchAndSync(ctx context.Context, userID uuid.UUID, limit int) (*SyncResult, error) {
+// StartSync creates a job record, persists it, and launches the background goroutine.
+// Returns the job immediately (status PENDING).
+func (s *StravaService) StartSync(ctx context.Context, userID uuid.UUID, limit int) (*model.StravaSyncJob, error) {
 	if s.accessToken == "" {
 		return nil, fmt.Errorf("STRAVA_ACCESS_TOKEN not configured")
 	}
 
-	result := &SyncResult{}
+	now := time.Now()
+	job := &model.StravaSyncJob{
+		ID:         uuid.New(),
+		UserID:     userID,
+		Status:     model.JobStatusPending,
+		LimitCount: limit,
+		StartedAt:  now,
+		CreatedAt:  now,
+	}
 
-	// Fetch activities from Strava
+	if err := s.stravaRepo.CreateJob(context.Background(), job); err != nil {
+		return nil, fmt.Errorf("failed to create sync job: %w", err)
+	}
+
+	log.Printf("[strava-sync][job=%s] job created for user=%s limit=%d", job.ID, userID, limit)
+
+	go s.runJob(job)
+
+	return job, nil
+}
+
+// GetJob returns the current state of a sync job.
+func (s *StravaService) GetJob(ctx context.Context, jobID uuid.UUID) (*model.StravaSyncJob, error) {
+	job, err := s.stravaRepo.GetJob(ctx, jobID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrJobNotFound, err)
+	}
+	return job, nil
+}
+
+// RetrySync re-launches a failed job from the appropriate phase.
+func (s *StravaService) RetrySync(ctx context.Context, jobID uuid.UUID) (*model.StravaSyncJob, error) {
+	job, err := s.stravaRepo.GetJob(ctx, jobID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrJobNotFound, err)
+	}
+
+	if job.Status != model.JobStatusFetchingFailed && job.Status != model.JobStatusProcessingFailed {
+		return nil, fmt.Errorf("job is not in a failed state (current: %s)", job.Status)
+	}
+
+	log.Printf("[strava-sync][job=%s] retrying from status=%s", jobID, job.Status)
+
+	go s.runJob(job)
+
+	return job, nil
+}
+
+// runJob executes fetch and process phases sequentially in a background goroutine.
+func (s *StravaService) runJob(job *model.StravaSyncJob) {
+	ctx := context.Background()
+
+	// If retrying a processing failure, skip re-fetch.
+	if job.Status != model.JobStatusProcessingFailed {
+		if err := s.runFetchPhase(ctx, job); err != nil {
+			log.Printf("[strava-sync][job=%s] fetch phase failed: %v", job.ID, err)
+			return
+		}
+	}
+
+	if err := s.runProcessPhase(ctx, job); err != nil {
+		log.Printf("[strava-sync][job=%s] process phase failed: %v", job.ID, err)
+	}
+}
+
+// runFetchPhase fetches activities from Strava and upserts them to strava_activities.
+func (s *StravaService) runFetchPhase(ctx context.Context, job *model.StravaSyncJob) error {
+	if err := s.stravaRepo.SetJobFetching(ctx, job.ID); err != nil {
+		return fmt.Errorf("failed to set FETCHING: %w", err)
+	}
+	log.Printf("[strava-sync][job=%s] fetch phase started", job.ID)
+
 	stravaActivities, err := s.fetchActivities(ctx)
 	if err != nil {
-		result.Error = fmt.Sprintf("failed to fetch from Strava: %v", err)
-		return result, err
+		msg := fmt.Sprintf("failed to fetch from Strava: %v", err)
+		_ = s.stravaRepo.SetJobFetchFailed(ctx, job.ID, msg)
+		return fmt.Errorf("%s", msg)
 	}
 
-	if len(stravaActivities) == 0 {
-		return result, nil
+	if job.LimitCount > 0 && len(stravaActivities) > job.LimitCount {
+		stravaActivities = stravaActivities[:job.LimitCount]
 	}
 
-	if limit > 0 && len(stravaActivities) > limit {
-		stravaActivities = stravaActivities[:limit]
-	}
+	log.Printf("[strava-sync][job=%s] fetched %d activities from Strava", job.ID, len(stravaActivities))
 
-	// Find time bounds
-	earliest := stravaActivities[0].StartDate
-	latest := stravaActivities[len(stravaActivities)-1].StartDate
-	timeWindow := time.Duration(matchTimeWindow*2) * time.Second
-
-	localActivities, err := s.activityRepo.FindByTimeRange(ctx, userID,
-		earliest.Add(-timeWindow),
-		latest.Add(timeWindow))
-	if err != nil {
-		result.Error = fmt.Sprintf("failed to fetch local activities: %v", err)
-		return result, err
-	}
-
-	// Process each Strava activity
 	for _, sa := range stravaActivities {
-		// Upsert to cache
 		stravaModel := &model.StravaActivity{
 			ID:           uuid.New(),
-			UserID:       userID,
+			UserID:       job.UserID,
 			StravaID:     sa.ID,
 			Title:        &sa.Name,
 			ActivityType: &sa.Type,
 			StartTime:    sa.StartDateLocal,
 			Distance:     &sa.Distance,
 			IsPrivate:    sa.Private,
-			IsFlagged:    false, // Strava doesn't expose this, user can update manually
-			RawJSON:      nil,
+			IsFlagged:    false,
 			SyncedAt:     time.Now(),
 		}
-
-		// Store raw JSON
 		if data, err := json.Marshal(sa); err == nil {
 			json.Unmarshal(data, &stravaModel.RawJSON)
 		}
 
-		if err := s.stravaRepo.Upsert(ctx, stravaModel); err != nil {
-			continue // log but continue
+		if err := s.stravaRepo.Upsert(ctx, stravaModel, job.ID); err != nil {
+			log.Printf("[strava-sync][job=%s] upsert failed for strava_id=%d: %v", job.ID, sa.ID, err)
 		}
 
-		// Try to match with local activity
-		match := s.findMatch(sa, localActivities)
-		if match != nil {
-			// Update existing activity
-			sport := mapStravaType(sa.Type)
-			if err := s.activityRepo.UpdateActivity(ctx, match.ID, sa.Name, sport); err == nil {
-				result.UpdatedCount++
-			}
-		} else {
-			// Find potential candidates
-			candidates := s.findCandidates(sa, localActivities)
-			if len(candidates) > 0 {
-				result.Candidates = append(result.Candidates, model.StravaMatchCandidate{
-					StravaActivity:  stravaModel,
-					LocalActivity:   nil,
-					TimeDiffSecs:    0,
-					DistanceDiffPct: 0,
-				})
-			} else {
-				// No match, could create new (not implemented yet - requires .fit file)
-				result.CreatedCount++
-			}
-		}
-
-		// Rate limiting
 		time.Sleep(rateLimitDelay)
 	}
 
-	return result, nil
+	if err := s.stravaRepo.SetJobDataFetched(ctx, job.ID, len(stravaActivities)); err != nil {
+		return fmt.Errorf("failed to set DATA_FETCHED: %w", err)
+	}
+	log.Printf("[strava-sync][job=%s] fetch phase complete, %d activities cached", job.ID, len(stravaActivities))
+	return nil
+}
+
+// runProcessPhase reads cached strava_activities for this job and matches them to local activities.
+func (s *StravaService) runProcessPhase(ctx context.Context, job *model.StravaSyncJob) error {
+	if err := s.stravaRepo.SetJobProcessing(ctx, job.ID); err != nil {
+		return fmt.Errorf("failed to set PROCESSING: %w", err)
+	}
+	log.Printf("[strava-sync][job=%s] process phase started", job.ID)
+
+	cached, err := s.stravaRepo.GetStravaActivitiesByJob(ctx, job.ID)
+	if err != nil {
+		msg := fmt.Sprintf("failed to load cached strava activities: %v", err)
+		_ = s.stravaRepo.SetJobProcessFailed(ctx, job.ID, msg)
+		return fmt.Errorf("%s", msg)
+	}
+
+	if len(cached) == 0 {
+		_ = s.stravaRepo.SetJobDataProcessed(ctx, job.ID, 0, 0)
+		log.Printf("[strava-sync][job=%s] no cached activities to process", job.ID)
+		return nil
+	}
+
+	// Build time bounds for local activity lookup
+	earliest := cached[0].StartTime
+	latest := cached[0].StartTime
+	for _, a := range cached {
+		if a.StartTime.Before(earliest) {
+			earliest = a.StartTime
+		}
+		if a.StartTime.After(latest) {
+			latest = a.StartTime
+		}
+	}
+	timeWindow := time.Duration(matchTimeWindow*2) * time.Second
+	localActivities, err := s.activityRepo.FindByTimeRange(ctx, job.UserID,
+		earliest.Add(-timeWindow),
+		latest.Add(timeWindow))
+	if err != nil {
+		msg := fmt.Sprintf("failed to fetch local activities: %v", err)
+		_ = s.stravaRepo.SetJobProcessFailed(ctx, job.ID, msg)
+		return fmt.Errorf("%s", msg)
+	}
+
+	updatedCount := 0
+	createdCount := 0
+
+	for _, sa := range cached {
+		summary := StravaActivitySummary{
+			ID:             sa.StravaID,
+			StartDateLocal: sa.StartTime,
+		}
+		if sa.Distance != nil {
+			summary.Distance = *sa.Distance
+		}
+		if sa.ActivityType != nil {
+			summary.Type = *sa.ActivityType
+		}
+		if sa.Title != nil {
+			summary.Name = *sa.Title
+		}
+
+		match := s.findMatch(summary, localActivities)
+		if match != nil {
+			sport := mapStravaType(summary.Type)
+			if err := s.activityRepo.UpdateActivity(ctx, match.ID, summary.Name, sport); err == nil {
+				updatedCount++
+				log.Printf("[strava-sync][job=%s] matched strava_id=%d → local=%s", job.ID, sa.StravaID, match.ID)
+			}
+		} else {
+			candidates := s.findCandidates(summary, localActivities)
+			if len(candidates) > 0 {
+				log.Printf("[strava-sync][job=%s] candidate found for strava_id=%d (%d options)", job.ID, sa.StravaID, len(candidates))
+			} else {
+				createdCount++
+			}
+		}
+	}
+
+	if err := s.stravaRepo.SetJobDataProcessed(ctx, job.ID, updatedCount, createdCount); err != nil {
+		return fmt.Errorf("failed to set DATA_PROCESSED: %w", err)
+	}
+	log.Printf("[strava-sync][job=%s] process phase complete: updated=%d created=%d", job.ID, updatedCount, createdCount)
+	return nil
 }
 
 // fetchActivities retrieves all activities from Strava (paginated)
@@ -163,7 +271,7 @@ func (s *StravaService) fetchActivities(ctx context.Context) ([]StravaActivitySu
 	perPage := 200
 
 	for {
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s/athlete/activities?page=%d&per_page=%d",
+		req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/athlete/activities?page=%d&per_page=%d",
 			stravaAPIBaseURL, page, perPage), nil)
 		if err != nil {
 			return nil, err
@@ -192,7 +300,6 @@ func (s *StravaService) fetchActivities(ctx context.Context) ([]StravaActivitySu
 		allActivities = append(allActivities, activities...)
 		page++
 
-		// Safety limit
 		if page > 10 { // 2000 activities max
 			break
 		}
@@ -204,13 +311,10 @@ func (s *StravaService) fetchActivities(ctx context.Context) ([]StravaActivitySu
 // findMatch looks for a local activity matching the Strava activity
 func (s *StravaService) findMatch(sa StravaActivitySummary, localActivities []*model.Activity) *model.Activity {
 	for _, la := range localActivities {
-		// Time diff
 		timeDiff := math.Abs(la.StartTime.Sub(sa.StartDateLocal).Seconds())
 		if timeDiff > float64(matchTimeWindow) {
 			continue
 		}
-
-		// Distance diff
 		if la.Distance == 0 {
 			continue
 		}
@@ -218,7 +322,6 @@ func (s *StravaService) findMatch(sa StravaActivitySummary, localActivities []*m
 		if distDiff > matchDistancePct {
 			continue
 		}
-
 		return la
 	}
 	return nil
@@ -229,21 +332,17 @@ func (s *StravaService) findCandidates(sa StravaActivitySummary, localActivities
 	var candidates []model.StravaMatchCandidate
 
 	for _, la := range localActivities {
-		// Time diff (looser window for candidates)
 		timeDiff := math.Abs(la.StartTime.Sub(sa.StartDateLocal).Seconds())
-		if timeDiff > float64(matchTimeWindow*10) { // 5 minutes
+		if timeDiff > float64(matchTimeWindow*10) {
 			continue
 		}
-
-		// Distance diff (looser window)
 		if la.Distance == 0 {
 			continue
 		}
 		distDiff := math.Abs(la.Distance-sa.Distance) / la.Distance
-		if distDiff > matchDistancePct*10 { // 10%
+		if distDiff > matchDistancePct*10 {
 			continue
 		}
-
 		candidates = append(candidates, model.StravaMatchCandidate{
 			StravaActivity:  nil,
 			LocalActivity:   la,
@@ -284,7 +383,7 @@ func (s *StravaService) HasToken() bool {
 	return s.accessToken != ""
 }
 
-// IsConfigured returns whether Strava is configured
+// IsStravaConfigured returns whether Strava is configured
 func IsStravaConfigured(cfg *config.Config) bool {
 	return cfg.StravaAccessToken != ""
 }

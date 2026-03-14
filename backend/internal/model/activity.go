@@ -234,3 +234,30 @@ type StravaMatchCandidate struct {
 	TimeDiffSecs    int64
 	DistanceDiffPct float64
 }
+
+// StravaSyncJob status constants
+const (
+	JobStatusPending          = "PENDING"
+	JobStatusFetching         = "FETCHING"
+	JobStatusDataFetched      = "DATA_FETCHED"
+	JobStatusFetchingFailed   = "FETCHING_FAILED"
+	JobStatusProcessing       = "PROCESSING"
+	JobStatusDataProcessed    = "DATA_PROCESSED"
+	JobStatusProcessingFailed = "PROCESSING_FAILED"
+)
+
+// StravaSyncJob tracks the lifecycle of an async Strava sync operation
+type StravaSyncJob struct {
+	ID           uuid.UUID  `json:"id"`
+	UserID       uuid.UUID  `json:"userId"`
+	Status       string     `json:"status"`
+	LimitCount   int        `json:"limitCount"`
+	FetchedCount *int       `json:"fetchedCount,omitempty"`
+	UpdatedCount *int       `json:"updatedCount,omitempty"`
+	CreatedCount *int       `json:"createdCount,omitempty"`
+	ErrorMessage *string    `json:"errorMessage,omitempty"`
+	StartedAt    time.Time  `json:"startedAt"`
+	FetchedAt    *time.Time `json:"fetchedAt,omitempty"`
+	CompletedAt  *time.Time `json:"completedAt,omitempty"`
+	CreatedAt    time.Time  `json:"createdAt"`
+}
