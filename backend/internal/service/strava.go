@@ -8,6 +8,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -30,10 +31,12 @@ type StravaActivitySummary struct {
 }
 
 const (
-	stravaAPIBaseURL = "https://www.strava.com/api/v3"
-	matchTimeWindow  = 30   // seconds
-	matchDistancePct = 0.01 // 1%
-	rateLimitDelay   = 50 * time.Millisecond
+	stravaAPIBaseURL  = "https://www.strava.com/api/v3"
+	matchTimeWindow   = 30   // seconds
+	matchDistancePct  = 0.01 // 1%
+	rateLimitDelay    = 50 * time.Millisecond
+	processBatchSize  = 50
+	stravaPageSize    = 200
 )
 
 var ErrJobNotFound = errors.New("strava sync job not found")
@@ -60,26 +63,29 @@ func NewStravaService(cfg *config.Config, pool *pgxpool.Pool) *StravaService {
 
 // StartSync creates a job record, persists it, and launches the background goroutine.
 // Returns the job immediately (status PENDING).
-func (s *StravaService) StartSync(ctx context.Context, userID uuid.UUID, limit int) (*model.StravaSyncJob, error) {
+// offset: number of activities to skip (Strava returns newest-first, so offset=0 = most recent).
+// limit: max activities to fetch (0 = all).
+func (s *StravaService) StartSync(ctx context.Context, userID uuid.UUID, offset, limit int) (*model.StravaSyncJob, error) {
 	if s.accessToken == "" {
 		return nil, fmt.Errorf("STRAVA_ACCESS_TOKEN not configured")
 	}
 
 	now := time.Now()
 	job := &model.StravaSyncJob{
-		ID:         uuid.New(),
-		UserID:     userID,
-		Status:     model.JobStatusPending,
-		LimitCount: limit,
-		StartedAt:  now,
-		CreatedAt:  now,
+		ID:          uuid.New(),
+		UserID:      userID,
+		Status:      model.JobStatusPending,
+		LimitCount:  limit,
+		OffsetCount: offset,
+		StartedAt:   now,
+		CreatedAt:   now,
 	}
 
 	if err := s.stravaRepo.CreateJob(context.Background(), job); err != nil {
 		return nil, fmt.Errorf("failed to create sync job: %w", err)
 	}
 
-	log.Printf("[strava-sync][job=%s] job created for user=%s limit=%d", job.ID, userID, limit)
+	log.Printf("[strava-sync][job=%s] job created for user=%s offset=%d limit=%d", job.ID, userID, offset, limit)
 
 	go s.runJob(job)
 
@@ -92,6 +98,33 @@ func (s *StravaService) GetJob(ctx context.Context, jobID uuid.UUID) (*model.Str
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrJobNotFound, err)
 	}
+	return job, nil
+}
+
+// ReprocessSync skips the fetch phase and re-runs only the process phase.
+// Valid for any job that already has strava_activities data (DATA_FETCHED, DATA_PROCESSED, PROCESSING_FAILED).
+func (s *StravaService) ReprocessSync(ctx context.Context, jobID uuid.UUID) (*model.StravaSyncJob, error) {
+	job, err := s.stravaRepo.GetJob(ctx, jobID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrJobNotFound, err)
+	}
+
+	switch job.Status {
+	case model.JobStatusDataFetched, model.JobStatusDataProcessed, model.JobStatusProcessingFailed:
+		// ok
+	default:
+		return nil, fmt.Errorf("job must have completed fetch phase to reprocess (current: %s)", job.Status)
+	}
+
+	log.Printf("[strava-sync][job=%s] reprocess requested (status=%s)", jobID, job.Status)
+
+	go func() {
+		bgCtx := context.Background()
+		if err := s.runProcessPhase(bgCtx, job); err != nil {
+			log.Printf("[strava-sync][job=%s] reprocess failed: %v", job.ID, err)
+		}
+	}()
+
 	return job, nil
 }
 
@@ -137,18 +170,15 @@ func (s *StravaService) runFetchPhase(ctx context.Context, job *model.StravaSync
 	}
 	log.Printf("[strava-sync][job=%s] fetch phase started", job.ID)
 
-	stravaActivities, err := s.fetchActivities(ctx)
+	stravaActivities, err := s.fetchActivities(ctx, job.OffsetCount, job.LimitCount)
 	if err != nil {
 		msg := fmt.Sprintf("failed to fetch from Strava: %v", err)
 		_ = s.stravaRepo.SetJobFetchFailed(ctx, job.ID, msg)
 		return fmt.Errorf("%s", msg)
 	}
 
-	if job.LimitCount > 0 && len(stravaActivities) > job.LimitCount {
-		stravaActivities = stravaActivities[:job.LimitCount]
-	}
-
-	log.Printf("[strava-sync][job=%s] fetched %d activities from Strava", job.ID, len(stravaActivities))
+	log.Printf("[strava-sync][job=%s] fetched %d activities from Strava (offset=%d limit=%d)",
+		job.ID, len(stravaActivities), job.OffsetCount, job.LimitCount)
 
 	for _, sa := range stravaActivities {
 		stravaModel := &model.StravaActivity{
@@ -157,7 +187,7 @@ func (s *StravaService) runFetchPhase(ctx context.Context, job *model.StravaSync
 			StravaID:     sa.ID,
 			Title:        &sa.Name,
 			ActivityType: &sa.Type,
-			StartTime:    sa.StartDateLocal,
+			StartTime:    sa.StartDate, // UTC — matches how FIT files store start_time
 			Distance:     &sa.Distance,
 			IsPrivate:    sa.Private,
 			IsFlagged:    false,
@@ -181,7 +211,8 @@ func (s *StravaService) runFetchPhase(ctx context.Context, job *model.StravaSync
 	return nil
 }
 
-// runProcessPhase reads cached strava_activities for this job and matches them to local activities.
+// runProcessPhase reads cached strava_activities for this job, splits into batches of
+// processBatchSize, processes each batch in parallel, then aggregates results.
 func (s *StravaService) runProcessPhase(ctx context.Context, job *model.StravaSyncJob) error {
 	if err := s.stravaRepo.SetJobProcessing(ctx, job.ID); err != nil {
 		return fmt.Errorf("failed to set PROCESSING: %w", err)
@@ -201,9 +232,8 @@ func (s *StravaService) runProcessPhase(ctx context.Context, job *model.StravaSy
 		return nil
 	}
 
-	// Build time bounds for local activity lookup
-	earliest := cached[0].StartTime
-	latest := cached[0].StartTime
+	// Fetch local activities once for the full time range — shared across all batches (read-only).
+	earliest, latest := cached[0].StartTime, cached[0].StartTime
 	for _, a := range cached {
 		if a.StartTime.Before(earliest) {
 			earliest = a.StartTime
@@ -214,21 +244,65 @@ func (s *StravaService) runProcessPhase(ctx context.Context, job *model.StravaSy
 	}
 	timeWindow := time.Duration(matchTimeWindow*2) * time.Second
 	localActivities, err := s.activityRepo.FindByTimeRange(ctx, job.UserID,
-		earliest.Add(-timeWindow),
-		latest.Add(timeWindow))
+		earliest.Add(-timeWindow), latest.Add(timeWindow))
 	if err != nil {
 		msg := fmt.Sprintf("failed to fetch local activities: %v", err)
 		_ = s.stravaRepo.SetJobProcessFailed(ctx, job.ID, msg)
 		return fmt.Errorf("%s", msg)
 	}
 
-	updatedCount := 0
-	createdCount := 0
+	// Split cached into batches of processBatchSize and process in parallel.
+	var (
+		wg           sync.WaitGroup
+		mu           sync.Mutex
+		totalUpdated int
+		totalCreated int
+		firstErr     error
+	)
 
-	for _, sa := range cached {
+	for i := 0; i < len(cached); i += processBatchSize {
+		end := i + processBatchSize
+		if end > len(cached) {
+			end = len(cached)
+		}
+		batch := cached[i:end]
+		batchNum := i/processBatchSize + 1
+
+		wg.Add(1)
+		go func(b []*model.StravaActivity, n int) {
+			defer wg.Done()
+			updated, created, err := s.processBatch(ctx, job, b, localActivities, n)
+			mu.Lock()
+			totalUpdated += updated
+			totalCreated += created
+			if err != nil && firstErr == nil {
+				firstErr = err
+			}
+			mu.Unlock()
+		}(batch, batchNum)
+	}
+
+	wg.Wait()
+
+	if firstErr != nil {
+		_ = s.stravaRepo.SetJobProcessFailed(ctx, job.ID, firstErr.Error())
+		return firstErr
+	}
+
+	if err := s.stravaRepo.SetJobDataProcessed(ctx, job.ID, totalUpdated, totalCreated); err != nil {
+		return fmt.Errorf("failed to set DATA_PROCESSED: %w", err)
+	}
+	log.Printf("[strava-sync][job=%s] process phase complete: updated=%d created=%d", job.ID, totalUpdated, totalCreated)
+	return nil
+}
+
+// processBatch matches a slice of cached Strava activities against local activities.
+func (s *StravaService) processBatch(ctx context.Context, job *model.StravaSyncJob, batch []*model.StravaActivity, localActivities []*model.Activity, batchNum int) (updated, created int, err error) {
+	log.Printf("[strava-sync][job=%s] batch=%d processing %d activities", job.ID, batchNum, len(batch))
+	for _, sa := range batch {
 		summary := StravaActivitySummary{
-			ID:             sa.StravaID,
-			StartDateLocal: sa.StartTime,
+			ID:        sa.StravaID,
+			StartDate: sa.StartTime, // stored as UTC
 		}
 		if sa.Distance != nil {
 			summary.Distance = *sa.Distance
@@ -243,36 +317,33 @@ func (s *StravaService) runProcessPhase(ctx context.Context, job *model.StravaSy
 		match := s.findMatch(summary, localActivities)
 		if match != nil {
 			sport := mapStravaType(summary.Type)
-			if err := s.activityRepo.UpdateActivity(ctx, match.ID, summary.Name, sport); err == nil {
-				updatedCount++
-				log.Printf("[strava-sync][job=%s] matched strava_id=%d → local=%s", job.ID, sa.StravaID, match.ID)
+			if e := s.activityRepo.UpdateActivity(ctx, match.ID, summary.Name, sport); e == nil {
+				updated++
+				log.Printf("[strava-sync][job=%s] batch=%d matched strava_id=%d → local=%s", job.ID, batchNum, sa.StravaID, match.ID)
 			}
 		} else {
 			candidates := s.findCandidates(summary, localActivities)
 			if len(candidates) > 0 {
-				log.Printf("[strava-sync][job=%s] candidate found for strava_id=%d (%d options)", job.ID, sa.StravaID, len(candidates))
+				log.Printf("[strava-sync][job=%s] batch=%d candidate for strava_id=%d (%d options)", job.ID, batchNum, sa.StravaID, len(candidates))
 			} else {
-				createdCount++
+				created++
 			}
 		}
 	}
-
-	if err := s.stravaRepo.SetJobDataProcessed(ctx, job.ID, updatedCount, createdCount); err != nil {
-		return fmt.Errorf("failed to set DATA_PROCESSED: %w", err)
-	}
-	log.Printf("[strava-sync][job=%s] process phase complete: updated=%d created=%d", job.ID, updatedCount, createdCount)
-	return nil
+	return updated, created, nil
 }
 
-// fetchActivities retrieves all activities from Strava (paginated)
-func (s *StravaService) fetchActivities(ctx context.Context) ([]StravaActivitySummary, error) {
+// fetchActivities retrieves activities from Strava applying offset and limit.
+// Strava returns activities newest-first, so offset=0 / limit=10 = 10 most recent.
+// offset and limit are applied over the full ordered result set, not Strava pages.
+func (s *StravaService) fetchActivities(ctx context.Context, offset, limit int) ([]StravaActivitySummary, error) {
 	var allActivities []StravaActivitySummary
 	page := 1
-	perPage := 200
+	need := offset + limit // stop fetching once we have this many (0 = fetch all)
 
 	for {
 		req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/athlete/activities?page=%d&per_page=%d",
-			stravaAPIBaseURL, page, perPage), nil)
+			stravaAPIBaseURL, page, stravaPageSize), nil)
 		if err != nil {
 			return nil, err
 		}
@@ -298,11 +369,31 @@ func (s *StravaService) fetchActivities(ctx context.Context) ([]StravaActivitySu
 		}
 
 		allActivities = append(allActivities, activities...)
-		page++
 
-		if page > 10 { // 2000 activities max
+		// Stop early if we have enough to cover offset+limit.
+		if need > 0 && len(allActivities) >= need {
 			break
 		}
+
+		if len(activities) < stravaPageSize {
+			break // last page
+		}
+
+		page++
+		if page > 10 { // hard cap: 2000 activities
+			break
+		}
+	}
+
+	// Apply offset.
+	if offset >= len(allActivities) {
+		return nil, nil
+	}
+	allActivities = allActivities[offset:]
+
+	// Apply limit.
+	if limit > 0 && len(allActivities) > limit {
+		allActivities = allActivities[:limit]
 	}
 
 	return allActivities, nil
@@ -311,7 +402,7 @@ func (s *StravaService) fetchActivities(ctx context.Context) ([]StravaActivitySu
 // findMatch looks for a local activity matching the Strava activity
 func (s *StravaService) findMatch(sa StravaActivitySummary, localActivities []*model.Activity) *model.Activity {
 	for _, la := range localActivities {
-		timeDiff := math.Abs(la.StartTime.Sub(sa.StartDateLocal).Seconds())
+		timeDiff := math.Abs(la.StartTime.Sub(sa.StartDate).Seconds())
 		if timeDiff > float64(matchTimeWindow) {
 			continue
 		}
@@ -332,7 +423,7 @@ func (s *StravaService) findCandidates(sa StravaActivitySummary, localActivities
 	var candidates []model.StravaMatchCandidate
 
 	for _, la := range localActivities {
-		timeDiff := math.Abs(la.StartTime.Sub(sa.StartDateLocal).Seconds())
+		timeDiff := math.Abs(la.StartTime.Sub(sa.StartDate).Seconds())
 		if timeDiff > float64(matchTimeWindow*10) {
 			continue
 		}

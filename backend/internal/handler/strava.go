@@ -45,7 +45,14 @@ func (h *StravaHandler) Sync(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	job, err := h.stravaService.StartSync(r.Context(), userID, limit)
+	offset := 0
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if v, err := strconv.Atoi(o); err == nil && v > 0 {
+			offset = v
+		}
+	}
+
+	job, err := h.stravaService.StartSync(r.Context(), userID, offset, limit)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -98,6 +105,33 @@ func (h *StravaHandler) RetryJob(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Not in a failed state
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusAccepted, job)
+}
+
+// ReprocessJob re-runs only the process (matching) phase using already-fetched data.
+// @Summary Reprocess a sync job
+// @Tags strava
+// @Produce json
+// @Param id path string true "Job ID"
+// @Success 202 {object} model.StravaSyncJob
+// @Router /api/strava/jobs/{id}/reprocess [post]
+func (h *StravaHandler) ReprocessJob(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid job ID"})
+		return
+	}
+
+	job, err := h.stravaService.ReprocessSync(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, service.ErrJobNotFound) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+			return
+		}
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 		return
 	}

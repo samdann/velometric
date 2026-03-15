@@ -55,9 +55,9 @@ func (r *StravaRepository) Upsert(ctx context.Context, s *model.StravaActivity, 
 // CreateJob persists a new sync job.
 func (r *StravaRepository) CreateJob(ctx context.Context, job *model.StravaSyncJob) error {
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO strava_sync_jobs (id, user_id, status, limit_count, started_at, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, job.ID, job.UserID, job.Status, job.LimitCount, job.StartedAt, job.CreatedAt)
+		INSERT INTO strava_sync_jobs (id, user_id, status, limit_count, offset_count, started_at, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, job.ID, job.UserID, job.Status, job.LimitCount, job.OffsetCount, job.StartedAt, job.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create strava_sync_job: %w", err)
 	}
@@ -68,11 +68,11 @@ func (r *StravaRepository) CreateJob(ctx context.Context, job *model.StravaSyncJ
 func (r *StravaRepository) GetJob(ctx context.Context, id uuid.UUID) (*model.StravaSyncJob, error) {
 	var j model.StravaSyncJob
 	err := r.pool.QueryRow(ctx, `
-		SELECT id, user_id, status, limit_count, fetched_count, updated_count, created_count,
+		SELECT id, user_id, status, limit_count, offset_count, fetched_count, updated_count, created_count,
 		       error_message, started_at, fetched_at, completed_at, created_at
 		FROM strava_sync_jobs WHERE id = $1
 	`, id).Scan(
-		&j.ID, &j.UserID, &j.Status, &j.LimitCount, &j.FetchedCount, &j.UpdatedCount, &j.CreatedCount,
+		&j.ID, &j.UserID, &j.Status, &j.LimitCount, &j.OffsetCount, &j.FetchedCount, &j.UpdatedCount, &j.CreatedCount,
 		&j.ErrorMessage, &j.StartedAt, &j.FetchedAt, &j.CompletedAt, &j.CreatedAt,
 	)
 	if err != nil {

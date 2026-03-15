@@ -252,6 +252,7 @@ type StravaSyncJob struct {
 	UserID       uuid.UUID  `json:"userId"`
 	Status       string     `json:"status"`
 	LimitCount   int        `json:"limitCount"`
+	OffsetCount  int        `json:"offsetCount"`
 	FetchedCount *int       `json:"fetchedCount,omitempty"`
 	UpdatedCount *int       `json:"updatedCount,omitempty"`
 	CreatedCount *int       `json:"createdCount,omitempty"`

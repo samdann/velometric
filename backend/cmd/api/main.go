@@ -102,6 +102,7 @@ func main() {
 			r.Get("/strava/status", stravaHandler.GetStatus)
 			r.Get("/strava/jobs/{id}", stravaHandler.GetJob)
 			r.Post("/strava/jobs/{id}/retry", stravaHandler.RetryJob)
+			r.Post("/strava/jobs/{id}/reprocess", stravaHandler.ReprocessJob)
 		}
 	})
 

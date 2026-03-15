@@ -163,13 +163,22 @@ paths:
         Poll `GET /api/strava/jobs/{id}` to track progress.
       tags: [Strava]
       parameters:
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: |
+            Number of activities to skip from the start of Strava's result set (newest-first).
+            offset=0 starts from the most recent activity. offset=10 skips the 10 most recent.
         - name: limit
           in: query
           required: false
           schema:
             type: integer
             minimum: 1
-          description: Max number of Strava activities to process. Omit or set to 0 for all.
+          description: Max number of Strava activities to fetch. Omit or set to 0 for all.
       responses:
         "202":
           description: Job created and running in background
@@ -240,6 +249,42 @@ paths:
                 $ref: "#/components/schemas/Error"
         "409":
           description: Job is not in a failed state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/strava/jobs/{id}/reprocess:
+    post:
+      summary: Reprocess a sync job
+      description: |
+        Skips the Strava fetch phase and re-runs only the matching phase using
+        already-cached `strava_activities`. Useful after fixing matching logic or
+        timezone issues without re-fetching from Strava.
+        Valid for jobs in `DATA_FETCHED`, `DATA_PROCESSED`, or `PROCESSING_FAILED` state.
+      tags: [Strava]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "202":
+          description: Reprocess started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StravaSyncJob"
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Job has not completed the fetch phase yet
           content:
             application/json:
               schema:
@@ -567,7 +612,10 @@ components:
             - PROCESSING_FAILED
         limitCount:
           type: integer
-          description: Max activities to process (0 = all)
+          description: Max activities to fetch (0 = all)
+        offsetCount:
+          type: integer
+          description: Number of activities skipped from the start of Strava's result set
         fetchedCount:
           type: integer
           description: Number of activities fetched from Strava (set after FETCHING phase)

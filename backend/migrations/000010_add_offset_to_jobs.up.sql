@@ -1,0 +1,1 @@
+ALTER TABLE strava_sync_jobs ADD COLUMN offset_count INTEGER NOT NULL DEFAULT 0;
