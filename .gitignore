@@ -40,3 +40,7 @@ coverage/
 *.dylib
 *.test
 *.out
+
+
+#specific folders
+backend/db_dumps
