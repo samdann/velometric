@@ -29,11 +29,11 @@ func makeLocalActivity(startTime time.Time, distanceM float64) *model.Activity {
 // and distance (meters).
 func makeStravaSummary(startLocal time.Time, distanceM float64) StravaActivitySummary {
 	return StravaActivitySummary{
-		ID:             1,
-		Name:           "Morning Ride",
-		Type:           "Ride",
+		ID:        1,
+		Name:      "Morning Ride",
+		Type:      "Ride",
 		StartDate: startLocal,
-		Distance:       distanceM,
+		Distance:  distanceM,
 	}
 }
 
@@ -161,7 +161,7 @@ func TestFindMatch_EmptyLocals(t *testing.T) {
 
 func TestFindMatch_MultipleLocals_PicksCorrectOne(t *testing.T) {
 	// First local is a mismatch (wrong distance); second is a good match.
-	noMatch := makeLocalActivity(baseTime, 999)   // completely different distance
+	noMatch := makeLocalActivity(baseTime, 999) // completely different distance
 	goodMatch := makeLocalActivity(baseTime, 30000)
 	sa := makeStravaSummary(baseTime, 30000)
 
@@ -245,6 +245,7 @@ func TestFindCandidates_MultipleCandidates(t *testing.T) {
 }
 
 func TestFindCandidates_PopulatesTimeDiffAndDistanceDiff(t *testing.T) {
+	//this is a comment for testing
 	timeDiff := 60 * time.Second
 	// 5% distance difference
 	la := makeLocalActivity(baseTime, 30000)
