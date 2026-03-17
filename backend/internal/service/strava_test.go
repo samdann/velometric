@@ -32,7 +32,7 @@ func makeStravaSummary(startLocal time.Time, distanceM float64) StravaActivitySu
 		ID:             1,
 		Name:           "Morning Ride",
 		Type:           "Ride",
-		StartDateLocal: startLocal,
+		StartDate: startLocal,
 		Distance:       distanceM,
 	}
 }

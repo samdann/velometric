@@ -31,12 +31,12 @@ type StravaActivitySummary struct {
 }
 
 const (
-	stravaAPIBaseURL  = "https://www.strava.com/api/v3"
-	matchTimeWindow   = 30   // seconds
-	matchDistancePct  = 0.01 // 1%
-	rateLimitDelay    = 50 * time.Millisecond
-	processBatchSize  = 50
-	stravaPageSize    = 200
+	stravaAPIBaseURL = "https://www.strava.com/api/v3"
+	matchTimeWindow  = 30   // seconds
+	matchDistancePct = 0.01 // 1%
+	rateLimitDelay   = 50 * time.Millisecond
+	processBatchSize = 50
+	stravaPageSize   = 200
 )
 
 var ErrJobNotFound = errors.New("strava sync job not found")
