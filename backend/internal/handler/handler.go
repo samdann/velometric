@@ -17,9 +17,10 @@ import (
 type Handler struct {
 	db              *database.DB
 	cfg             *config.Config
-	activityService activityServicer
-	userService     userServicer
-	batchImport     batchImportServicer
+	activityService   activityServicer
+	userService       userServicer
+	batchImport       batchImportServicer
+	statisticsService statisticsServicer
 	stravaService   *service.StravaService
 	// resolveUserID returns the current user's ID. Injected so tests can
 	// bypass the DB lookup without a real connection.
@@ -33,6 +34,8 @@ func New(db *database.DB, cfg *config.Config) *Handler {
 	if db != nil {
 		activityRepo := repository.NewActivityRepository(db.Pool)
 		h.activityService = service.NewActivityService(activityRepo)
+		statsRepo := repository.NewStatisticsRepository(db.Pool)
+		h.statisticsService = service.NewStatisticsService(statsRepo)
 		userRepo := repository.NewUserRepository(db.Pool)
 		h.userService = service.NewUserService(userRepo)
 

@@ -4,12 +4,14 @@ import { ActivitiesIcon } from "./activities-icon";
 import { UploadIcon } from "./upload-icon";
 import { SettingsIcon } from "./settings-icon";
 import { ChevronLeftIcon } from "./chevron-left-icon";
+import { StatisticsIcon } from "./statistics-icon";
 
 export { DashboardIcon } from "./dashboard-icon";
 export { ActivitiesIcon } from "./activities-icon";
 export { UploadIcon } from "./upload-icon";
 export { SettingsIcon } from "./settings-icon";
 export { ChevronLeftIcon } from "./chevron-left-icon";
+export { StatisticsIcon } from "./statistics-icon";
 
 interface IconProps {
   name: IconName;
@@ -28,5 +30,7 @@ export function Icon({ name, className }: IconProps) {
       return <SettingsIcon className={className} />;
     case "chevron-left":
       return <ChevronLeftIcon className={className} />;
+    case "statistics":
+      return <StatisticsIcon className={className} />;
   }
 }

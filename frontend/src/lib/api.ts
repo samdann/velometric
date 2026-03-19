@@ -126,6 +126,25 @@ export interface PowerZonesResponse {
   zones: PowerZone[];
 }
 
+export interface AnnualPowerCurvePoint {
+  durationSeconds: number;
+  medianPower: number;
+}
+
+export interface AnnualZoneDistributionPoint {
+  zoneNumber: number;
+  name: string;
+  color: string;
+  minWatts: number;
+  maxWatts: number | null;
+  medianPercentage: number;
+}
+
+export interface AnnualPowerStats {
+  powerCurve: AnnualPowerCurvePoint[];
+  zoneDistribution: AnnualZoneDistributionPoint[];
+}
+
 class ApiClient {
   private baseUrl: string;
 
@@ -379,6 +398,24 @@ class ApiClient {
     if (!response.ok) {
       const error: ApiError = await response.json();
       throw new Error(error.error || "Failed to save power zones");
+    }
+    return response.json();
+  }
+
+  async getStatisticsYears(): Promise<number[]> {
+    const response = await fetch(`${this.baseUrl}/api/statistics/years`);
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to fetch statistics years");
+    }
+    return response.json();
+  }
+
+  async getStatisticsPower(year: number): Promise<AnnualPowerStats> {
+    const response = await fetch(`${this.baseUrl}/api/statistics/power?year=${year}`);
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to fetch statistics power");
     }
     return response.json();
   }

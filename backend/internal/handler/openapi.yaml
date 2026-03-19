@@ -290,6 +290,54 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /api/statistics/years:
+    get:
+      summary: Get years with power data
+      description: Returns distinct years (descending) where the user has activities with power meter data.
+      tags: [Statistics]
+      responses:
+        "200":
+          description: Array of years
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+                example: [2025, 2024, 2023]
+
+  /api/statistics/power:
+    get:
+      summary: Get annual power statistics
+      description: |
+        Returns the median power curve and median zone distribution across all rides
+        with power data in the given year. Zone distribution requires FTP and power
+        zones to be configured in Settings.
+      tags: [Statistics]
+      parameters:
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 2000
+            maximum: 2100
+          description: The year to compute statistics for
+          example: 2024
+      responses:
+        "200":
+          description: Annual power statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnnualPowerStats"
+        "400":
+          description: Missing or invalid year parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /api/internal/batch-import:
     post:
       summary: Start batch FIT import
@@ -660,6 +708,46 @@ components:
         distanceDiffPct:
           type: number
           description: Relative distance difference as a fraction (0.05 = 5%)
+
+    AnnualPowerStats:
+      type: object
+      properties:
+        powerCurve:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnnualPowerCurvePoint"
+        zoneDistribution:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnnualZoneDistributionPoint"
+
+    AnnualPowerCurvePoint:
+      type: object
+      properties:
+        durationSeconds:
+          type: integer
+          description: Duration in seconds (5, 15, 30, 60, 300, 600, 1200, 1800, 2700, 3600)
+        medianPower:
+          type: integer
+          description: Median best power across all rides in the year (watts)
+
+    AnnualZoneDistributionPoint:
+      type: object
+      properties:
+        zoneNumber:
+          type: integer
+        name:
+          type: string
+        color:
+          type: string
+        minWatts:
+          type: integer
+        maxWatts:
+          type: integer
+          nullable: true
+        medianPercentage:
+          type: number
+          description: Median % of ride time spent in this zone across all rides in the year
 
     Error:
       type: object

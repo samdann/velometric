@@ -77,6 +77,7 @@ export function Topbar() {
       <nav className="flex items-center gap-1">
         <NavLink href="/" exact>Dashboard</NavLink>
         <NavLink href="/activities">Activities</NavLink>
+        <NavLink href="/statistics">Statistics</NavLink>
       </nav>
 
       <div className="ml-auto flex items-center gap-1">

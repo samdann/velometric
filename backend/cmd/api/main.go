@@ -96,6 +96,9 @@ func main() {
 		r.Get("/user/power-zones", h.GetPowerZones)
 		r.Put("/user/power-zones", h.SavePowerZones)
 
+		r.Get("/statistics/years", h.GetStatisticsYears)
+		r.Get("/statistics/power", h.GetStatisticsPower)
+
 		// Strava routes
 		if stravaHandler != nil {
 			r.Post("/strava/sync", stravaHandler.Sync)

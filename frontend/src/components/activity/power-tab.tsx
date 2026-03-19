@@ -12,6 +12,15 @@ import {
 } from "recharts";
 import { api, Activity, PowerZoneDistributionPoint } from "@/lib/api";
 import { PowerZonesChart } from "./power-zones-chart";
+import {
+  CHART_GRID_STROKE,
+  CHART_TICK_STYLE,
+  CHART_TOOLTIP_CONTENT_STYLE,
+  CHART_COLORS,
+  POWER_CURVE_DURATIONS,
+  DURATION_LABELS,
+  formatDuration,
+} from "@/lib/chart-config";
 
 interface PowerCurvePoint {
   durationSeconds: number;
@@ -30,32 +39,8 @@ interface PowerTabProps {
   activity: Activity;
 }
 
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return s > 0 ? `${m}m ${s}s` : `${m}m`;
-  }
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
-}
-
 // Standard power curve durations to display in table
-const TABLE_DURATIONS = [5, 15, 30, 60, 300, 600, 1200, 1800, 2700, 3600];
-const DURATION_LABELS: Record<number, string> = {
-  5: "5s",
-  15: "15s",
-  30: "30s",
-  60: "1m",
-  300: "5m",
-  600: "10m",
-  1200: "20m",
-  1800: "30m",
-  2700: "45m",
-  3600: "1h",
-};
+const TABLE_DURATIONS = POWER_CURVE_DURATIONS;
 
 // Key durations for the summary cards
 const KEY_DURATIONS = [5, 30, 60, 300, 1200, 3600];
@@ -263,37 +248,37 @@ export function PowerTab({ activityId, activity }: PowerTabProps) {
                       .map((p, i) => ({ ...p, index: i }))}
                     margin={{ top: 4, right: 8, left: 0, bottom: 4 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                     <XAxis
                       dataKey="index"
                       type="number"
                       domain={[0, CHART_DURATIONS.length - 1]}
                       ticks={CHART_DURATIONS.map((_, i) => i)}
                       tickFormatter={(i) => formatDuration(CHART_DURATIONS[i])}
-                      tick={{ fill: "#6b7280", fontSize: 11, fontFamily: "DM Mono, monospace" }}
+                      tick={CHART_TICK_STYLE}
                       axisLine={false}
                       tickLine={false}
                       interval={1}
                     />
                     <YAxis
                       tickFormatter={(v) => `${v}w`}
-                      tick={{ fill: "#6b7280", fontSize: 11, fontFamily: "DM Mono, monospace" }}
+                      tick={CHART_TICK_STYLE}
                       axisLine={false}
                       tickLine={false}
                       width={52}
                     />
                     <Tooltip
-                      contentStyle={{ backgroundColor: "var(--color-background-subtle)", border: "1px solid var(--color-border)", borderRadius: "6px", fontSize: 12, color: "var(--color-foreground)" }}
+                      contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
                       labelFormatter={(i) => formatDuration(CHART_DURATIONS[Number(i)])}
                       formatter={(value: number | undefined) => [`${value ?? "—"}w`, "Best Power"]}
                     />
                     <Line
                       type="monotone"
                       dataKey="bestPower"
-                      stroke="#F97316"
+                      stroke={CHART_COLORS.power}
                       strokeWidth={2}
                       dot={false}
-                      activeDot={{ r: 4, fill: "#F97316" }}
+                      activeDot={{ r: 4, fill: CHART_COLORS.power }}
                     />
                   </LineChart>
                 </ResponsiveContainer>

@@ -1,34 +1,10 @@
 "use client";
 
 import { PowerZoneDistributionPoint } from "@/lib/api";
+import { zoneColor, formatZoneTime } from "@/lib/chart-config";
 
 interface PowerZonesChartProps {
   distribution: PowerZoneDistributionPoint[];
-}
-
-const ORANGE_SHADES = [
-  "#FED7AA", // Z1 — lightest
-  "#FDBA74", // Z2
-  "#FB923C", // Z3
-  "#F97316", // Z4
-  "#EA580C", // Z5
-  "#C2410C", // Z6
-  "#9A3412", // Z7 — darkest
-];
-
-function zoneColor(zoneNumber: number, total: number): string {
-  const idx = Math.round(((zoneNumber - 1) / Math.max(total - 1, 1)) * (ORANGE_SHADES.length - 1));
-  return ORANGE_SHADES[Math.min(idx, ORANGE_SHADES.length - 1)];
-}
-
-function formatTime(seconds: number): string {
-  if (seconds < 60) return `${Math.round(seconds)}s`;
-  const m = Math.floor(seconds / 60);
-  const s = Math.round(seconds % 60);
-  if (m < 60) return `${m}m ${s.toString().padStart(2, "0")}s`;
-  const h = Math.floor(m / 60);
-  const rem = m % 60;
-  return `${h}h ${rem.toString().padStart(2, "0")}m`;
 }
 
 export function PowerZonesChart({ distribution }: PowerZonesChartProps) {
@@ -79,7 +55,7 @@ export function PowerZonesChart({ distribution }: PowerZonesChartProps) {
                 {/* Time column */}
                 <div className="w-20 shrink-0 text-right">
                   <p className="font-mono text-sm font-semibold text-foreground">
-                    {hasTime ? formatTime(zone.seconds) : "—"}
+                    {hasTime ? formatZoneTime(zone.seconds) : "—"}
                   </p>
                 </div>
 

@@ -12,6 +12,11 @@ export const NAV_ITEMS: NavItem[] = [
     icon: "activities",
   },
   {
+    label: "Statistics",
+    href: "/statistics",
+    icon: "statistics",
+  },
+  {
     label: "Upload",
     href: "/upload",
     icon: "upload",
