@@ -348,6 +348,14 @@ paths:
             maximum: 2100
           description: The year to compute statistics for
           example: 2024
+        - name: mode
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [avg, best]
+            default: avg
+          description: "Zone distribution mode: avg = median across activities, best = max per zone independently"
       responses:
         "200":
           description: Annual power statistics

@@ -411,8 +411,8 @@ class ApiClient {
     return response.json();
   }
 
-  async getStatisticsPower(year: number): Promise<AnnualPowerStats> {
-    const response = await fetch(`${this.baseUrl}/api/statistics/power?year=${year}`);
+  async getStatisticsPower(year: number, mode: "avg" | "best" = "avg"): Promise<AnnualPowerStats> {
+    const response = await fetch(`${this.baseUrl}/api/statistics/power?year=${year}&mode=${mode}`);
     if (!response.ok) {
       const error: ApiError = await response.json();
       throw new Error(error.error || "Failed to fetch statistics power");

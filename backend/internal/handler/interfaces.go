@@ -42,7 +42,7 @@ type userServicer interface {
 // statisticsServicer is the subset of service.StatisticsService used by the handler layer.
 type statisticsServicer interface {
 	GetAvailablePowerYears(ctx context.Context, userID uuid.UUID) ([]int, error)
-	GetAnnualPowerStats(ctx context.Context, userID uuid.UUID, year, ftp int, zones []model.PowerZone) (*model.AnnualPowerStats, error)
+	GetAnnualPowerStats(ctx context.Context, userID uuid.UUID, year, ftp int, zones []model.PowerZone, mode string) (*model.AnnualPowerStats, error)
 }
 
 // batchImportServicer is the subset of service.BatchImportService used by the handler layer.

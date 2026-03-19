@@ -14,9 +14,12 @@ function WidgetCard({ title, children }: { title: string; children: React.ReactN
   );
 }
 
+type ZoneMode = "avg" | "best";
+
 export function StatsClient() {
   const [years, setYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [zoneMode, setZoneMode] = useState<ZoneMode>("avg");
   const [stats, setStats] = useState<AnnualPowerStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,11 +40,11 @@ export function StatsClient() {
     setLoading(true);
     setError(null);
     api
-      .getStatisticsPower(selectedYear)
+      .getStatisticsPower(selectedYear, zoneMode)
       .then(setStats)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [selectedYear]);
+  }, [selectedYear, zoneMode]);
 
   if (!loading && years.length === 0) {
     return (
@@ -53,20 +56,40 @@ export function StatsClient() {
 
   return (
     <div className="space-y-6">
-      {/* Year selector */}
-      <div className="flex items-center gap-3">
-        <label className="text-sm text-zinc-400">Year</label>
-        <select
-          value={selectedYear ?? ""}
-          onChange={(e) => setSelectedYear(Number(e.target.value))}
-          className="bg-background-subtle border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-power"
-        >
-          {years.map((y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
-        </select>
+      {/* Controls */}
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3">
+          <label className="text-sm text-zinc-400">Year</label>
+          <select
+            value={selectedYear ?? ""}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="bg-background-subtle border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-power"
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="text-sm text-zinc-400">Zone distribution</label>
+          <div className="flex rounded-lg border border-border overflow-hidden text-sm">
+            {(["avg", "best"] as ZoneMode[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => setZoneMode(m)}
+                className={`px-3 py-1.5 capitalize transition-colors ${
+                  zoneMode === m
+                    ? "bg-power text-white"
+                    : "bg-background-subtle text-zinc-400 hover:text-foreground"
+                }`}
+              >
+                {m === "avg" ? "Avg" : "Best"}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Widget grid */}
@@ -83,7 +106,7 @@ export function StatsClient() {
           <WidgetCard title={`Median Power Curve — ${selectedYear}`}>
             <PowerCurveWidget data={stats.powerCurve} year={selectedYear!} />
           </WidgetCard>
-          <WidgetCard title={`Median Zone Distribution — ${selectedYear}`}>
+          <WidgetCard title={`${zoneMode === "avg" ? "Median" : "Best"} Zone Distribution — ${selectedYear}`}>
             <PowerDistributionWidget data={stats.zoneDistribution} year={selectedYear!} />
           </WidgetCard>
         </div>

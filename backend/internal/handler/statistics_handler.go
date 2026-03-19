@@ -48,13 +48,18 @@ func (h *Handler) GetStatisticsPower(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	mode := r.URL.Query().Get("mode")
+	if mode != "best" {
+		mode = "avg"
+	}
+
 	ftp, zones, err := h.userService.GetPowerZones(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to get power zones")
 		return
 	}
 
-	stats, err := h.statisticsService.GetAnnualPowerStats(r.Context(), userID, year, ftp, zones)
+	stats, err := h.statisticsService.GetAnnualPowerStats(r.Context(), userID, year, ftp, zones, mode)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to compute statistics")
 		return
