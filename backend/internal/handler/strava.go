@@ -150,3 +150,27 @@ func (h *StravaHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
 		"configured": h.stravaService.HasToken(),
 	})
 }
+
+// RefreshToken exchanges a Strava refresh token for a new access token.
+// @Summary Refresh Strava access token
+// @Description Given a long-lived refresh token, returns a fresh access token.
+// @Tags strava
+// @Produce json
+// @Param refresh_token query string true "Strava refresh token"
+// @Success 200 {object} service.StravaTokenResponse
+// @Router /api/strava/refresh-token [post]
+func (h *StravaHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	refreshToken := r.URL.Query().Get("refresh_token")
+	if refreshToken == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "refresh_token query parameter is required"})
+		return
+	}
+
+	tok, err := h.stravaService.RefreshToken(r.Context(), refreshToken)
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, tok)
+}

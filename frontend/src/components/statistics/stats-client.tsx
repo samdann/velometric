@@ -7,7 +7,7 @@ import { PowerDistributionWidget } from "./power-distribution-widget";
 
 function WidgetCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+    <div className="p-1">
       <h3 className="text-sm font-medium text-zinc-400 mb-4">{title}</h3>
       {children}
     </div>
@@ -59,7 +59,7 @@ export function StatsClient() {
         <select
           value={selectedYear ?? ""}
           onChange={(e) => setSelectedYear(Number(e.target.value))}
-          className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+          className="bg-background-subtle border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-power"
         >
           {years.map((y) => (
             <option key={y} value={y}>

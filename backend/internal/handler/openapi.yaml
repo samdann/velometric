@@ -137,6 +137,30 @@ paths:
                 items:
                   $ref: "#/components/schemas/ActivityLap"
 
+  /api/strava/refresh-token:
+    post:
+      summary: Refresh Strava access token
+      description: Exchanges a long-lived refresh token for a new access token.
+      tags: [Strava]
+      parameters:
+        - in: query
+          name: refresh_token
+          required: true
+          schema:
+            type: string
+          description: Strava refresh token obtained from the initial OAuth flow.
+      responses:
+        "200":
+          description: New token response from Strava
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StravaTokenResponse"
+        "400":
+          description: Missing refresh_token parameter
+        "502":
+          description: Strava token refresh failed
+
   /api/strava/status:
     get:
       summary: Get Strava integration status
@@ -394,6 +418,24 @@ components:
         format: uuid
 
   schemas:
+    StravaTokenResponse:
+      type: object
+      properties:
+        token_type:
+          type: string
+          example: Bearer
+        expires_at:
+          type: integer
+          format: int64
+          description: Unix timestamp when the access token expires
+        expires_in:
+          type: integer
+          description: Seconds until the access token expires
+        refresh_token:
+          type: string
+        access_token:
+          type: string
+
     Activity:
       type: object
       properties:

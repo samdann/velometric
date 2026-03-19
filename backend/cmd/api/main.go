@@ -103,7 +103,8 @@ func main() {
 		if stravaHandler != nil {
 			r.Post("/strava/sync", stravaHandler.Sync)
 			r.Get("/strava/status", stravaHandler.GetStatus)
-			r.Get("/strava/jobs/{id}", stravaHandler.GetJob)
+			r.Post("/strava/refresh-token", stravaHandler.RefreshToken)
+r.Get("/strava/jobs/{id}", stravaHandler.GetJob)
 			r.Post("/strava/jobs/{id}/retry", stravaHandler.RetryJob)
 			r.Post("/strava/jobs/{id}/reprocess", stravaHandler.ReprocessJob)
 		}

@@ -8,6 +8,8 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -43,6 +45,7 @@ var ErrJobNotFound = errors.New("strava sync job not found")
 
 // StravaService handles Strava API interactions
 type StravaService struct {
+	cfg          *config.Config
 	accessToken  string
 	stravaRepo   *repository.StravaRepository
 	activityRepo *repository.ActivityRepository
@@ -52,6 +55,7 @@ type StravaService struct {
 // NewStravaService creates a new Strava service
 func NewStravaService(cfg *config.Config, pool *pgxpool.Pool) *StravaService {
 	return &StravaService{
+		cfg:          cfg,
 		accessToken:  cfg.StravaAccessToken,
 		stravaRepo:   repository.NewStravaRepository(pool),
 		activityRepo: repository.NewActivityRepository(pool),
@@ -477,4 +481,46 @@ func (s *StravaService) HasToken() bool {
 // IsStravaConfigured returns whether Strava is configured
 func IsStravaConfigured(cfg *config.Config) bool {
 	return cfg.StravaAccessToken != ""
+}
+
+// StravaTokenResponse holds the token returned by Strava.
+type StravaTokenResponse struct {
+	TokenType    string `json:"token_type"`
+	ExpiresAt    int64  `json:"expires_at"`
+	ExpiresIn    int    `json:"expires_in"`
+	RefreshToken string `json:"refresh_token"`
+	AccessToken  string `json:"access_token"`
+}
+
+// RefreshToken exchanges a refresh token for a new access token.
+func (s *StravaService) RefreshToken(ctx context.Context, refreshToken string) (*StravaTokenResponse, error) {
+	form := url.Values{}
+	form.Set("client_id", s.cfg.StravaClientID)
+	form.Set("client_secret", s.cfg.StravaSecret)
+	form.Set("refresh_token", refreshToken)
+	form.Set("grant_type", "refresh_token")
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://www.strava.com/oauth/token", strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("building token request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("token request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var body map[string]any
+		_ = json.NewDecoder(resp.Body).Decode(&body)
+		return nil, fmt.Errorf("strava returned %d: %v", resp.StatusCode, body)
+	}
+
+	var tok StravaTokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tok); err != nil {
+		return nil, fmt.Errorf("decoding token response: %w", err)
+	}
+	return &tok, nil
 }
