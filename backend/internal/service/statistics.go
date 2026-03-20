@@ -18,6 +18,7 @@ var tableDurations = []int{5, 15, 30, 60, 300, 600, 1200, 1800, 2700, 3600}
 type statisticsRepoer interface {
 	GetAvailablePowerYears(ctx context.Context, userID uuid.UUID) ([]int, error)
 	GetAnnualMedianPowerCurve(ctx context.Context, userID uuid.UUID, year int, durations []int) ([]model.AnnualPowerCurvePoint, error)
+	GetAnnualBestPowerCurve(ctx context.Context, userID uuid.UUID, year int, durations []int) ([]model.AnnualPowerCurvePoint, error)
 	GetAnnualPowerRecords(ctx context.Context, userID uuid.UUID, year int) ([]repository.ActivityPowerRecord, error)
 }
 
@@ -37,7 +38,13 @@ func (s *StatisticsService) GetAvailablePowerYears(ctx context.Context, userID u
 // GetAnnualPowerStats returns the power curve and zone distribution for a given year.
 // mode must be "avg" (median across activities) or "best" (max per zone independently).
 func (s *StatisticsService) GetAnnualPowerStats(ctx context.Context, userID uuid.UUID, year, ftp int, zones []model.PowerZone, mode string) (*model.AnnualPowerStats, error) {
-	curve, err := s.repo.GetAnnualMedianPowerCurve(ctx, userID, year, tableDurations)
+	var curve []model.AnnualPowerCurvePoint
+	var err error
+	if mode == "best" {
+		curve, err = s.repo.GetAnnualBestPowerCurve(ctx, userID, year, tableDurations)
+	} else {
+		curve, err = s.repo.GetAnnualMedianPowerCurve(ctx, userID, year, tableDurations)
+	}
 	if err != nil {
 		return nil, err
 	}

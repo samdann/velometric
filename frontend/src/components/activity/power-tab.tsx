@@ -1,25 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 import { api, Activity, PowerZoneDistributionPoint } from "@/lib/api";
 import { PowerZonesChart } from "./power-zones-chart";
+import { PowerCurveChart, PowerCurveDataPoint } from "@/components/charts/PowerCurveChart";
 import {
-  CHART_GRID_STROKE,
-  CHART_TICK_STYLE,
-  CHART_TOOLTIP_CONTENT_STYLE,
-  CHART_COLORS,
   POWER_CURVE_DURATIONS,
   DURATION_LABELS,
-  formatDuration,
 } from "@/lib/chart-config";
 
 interface PowerCurvePoint {
@@ -55,9 +42,6 @@ const KEY_DURATION_LABELS: Record<number, string> = {
 
 // All durations the backend computes — used for the chart
 const CHART_DURATIONS = [1, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 300, 600, 900, 1200, 1800, 2700, 3600, 5400, 7200];
-
-// Log-scale x-axis ticks with readable labels
-const X_TICKS = [1, 5, 30, 60, 300, 600, 1800, 3600, 7200];
 
 export function PowerTab({ activityId, activity }: PowerTabProps) {
   const [powerCurve, setPowerCurve] = useState<PowerCurvePoint[]>([]);
@@ -122,6 +106,11 @@ export function PowerTab({ activityId, activity }: PowerTabProps) {
   const hasCadence  = tableRows.some((r) => r.avgCadence != null);
   const hasLR       = tableRows.some((r) => r.avgLRBalance != null);
   const hasTE       = tableRows.some((r) => r.avgTorqueEffectiveness != null);
+
+  // Chart data — denser set of durations, normalized to shared interface
+  const chartData: PowerCurveDataPoint[] = powerCurve
+    .filter((p) => CHART_DURATIONS.includes(p.durationSeconds))
+    .map((p) => ({ durationSeconds: p.durationSeconds, power: p.bestPower }));
 
   return (
     <div className="mt-6 space-y-6">
@@ -241,47 +230,7 @@ export function PowerTab({ activityId, activity }: PowerTabProps) {
             {/* Chart overlays when active, fills exact same space */}
             {curveView === "chart" && (
               <div className="absolute inset-0 rounded-lg border border-border bg-background-subtle p-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={powerCurve
-                      .filter((p) => CHART_DURATIONS.includes(p.durationSeconds))
-                      .map((p, i) => ({ ...p, index: i }))}
-                    margin={{ top: 4, right: 8, left: 0, bottom: 4 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
-                    <XAxis
-                      dataKey="index"
-                      type="number"
-                      domain={[0, CHART_DURATIONS.length - 1]}
-                      ticks={CHART_DURATIONS.map((_, i) => i)}
-                      tickFormatter={(i) => formatDuration(CHART_DURATIONS[i])}
-                      tick={CHART_TICK_STYLE}
-                      axisLine={false}
-                      tickLine={false}
-                      interval={1}
-                    />
-                    <YAxis
-                      tickFormatter={(v) => `${v}w`}
-                      tick={CHART_TICK_STYLE}
-                      axisLine={false}
-                      tickLine={false}
-                      width={52}
-                    />
-                    <Tooltip
-                      contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
-                      labelFormatter={(i) => formatDuration(CHART_DURATIONS[Number(i)])}
-                      formatter={(value: number | undefined) => [`${value ?? "—"}w`, "Best Power"]}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="bestPower"
-                      stroke={CHART_COLORS.power}
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 4, fill: CHART_COLORS.power }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <PowerCurveChart data={chartData} tooltipLabel="Best Power" labelInterval={1} />
               </div>
             )}
           </div>

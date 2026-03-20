@@ -81,6 +81,36 @@ func (r *StatisticsRepository) GetAnnualMedianPowerCurve(ctx context.Context, us
 	return points, nil
 }
 
+// GetAnnualBestPowerCurve returns the absolute best power at each of the given durations for a year.
+func (r *StatisticsRepository) GetAnnualBestPowerCurve(ctx context.Context, userID uuid.UUID, year int, durations []int) ([]model.AnnualPowerCurvePoint, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT apc.duration_seconds,
+		       MAX(apc.best_power)::int AS best_power
+		FROM activity_power_curve apc
+		JOIN activities a ON apc.activity_id = a.id
+		WHERE a.user_id = $1
+		  AND EXTRACT(YEAR FROM a.start_time) = $2
+		  AND a.avg_power IS NOT NULL
+		  AND apc.duration_seconds = ANY($3)
+		GROUP BY apc.duration_seconds
+		ORDER BY apc.duration_seconds
+	`, userID, year, durations)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get annual best power curve: %w", err)
+	}
+	defer rows.Close()
+
+	var points []model.AnnualPowerCurvePoint
+	for rows.Next() {
+		var p model.AnnualPowerCurvePoint
+		if err := rows.Scan(&p.DurationSeconds, &p.MedianPower); err != nil {
+			return nil, fmt.Errorf("failed to scan power curve point: %w", err)
+		}
+		points = append(points, p)
+	}
+	return points, nil
+}
+
 // GetAnnualPowerRecords returns all power records for activities in a given year, ordered by (activity_id, timestamp).
 func (r *StatisticsRepository) GetAnnualPowerRecords(ctx context.Context, userID uuid.UUID, year int) ([]ActivityPowerRecord, error) {
 	rows, err := r.pool.Query(ctx, `

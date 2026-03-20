@@ -1,84 +1,95 @@
 "use client";
 
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { useState } from "react";
 import { AnnualPowerCurvePoint } from "@/lib/api";
-import {
-  CHART_GRID_STROKE,
-  CHART_TICK_STYLE,
-  CHART_TOOLTIP_CONTENT_STYLE,
-  CHART_COLORS,
-  POWER_CURVE_DURATIONS,
-  DURATION_LABELS,
-} from "@/lib/chart-config";
+import { PowerCurveChart, PowerCurveDataPoint } from "@/components/charts/PowerCurveChart";
+import { HelpIcon } from "@/components/ui/HelpIcon";
+import { STATISTICS_HINTS } from "@/lib/statistics-hints";
+import { POWER_CURVE_DURATIONS, DURATION_LABELS } from "@/lib/chart-config";
 
 interface Props {
   data: AnnualPowerCurvePoint[];
   year: number;
+  mode: "avg" | "best";
 }
 
-export function PowerCurveWidget({ data, year }: Props) {
-  if (data.length === 0) {
-    return (
-      <div className="rounded-lg border border-border bg-background-subtle p-6 text-center">
-        <p className="text-sm text-foreground-muted">No power curve data for {year}</p>
-      </div>
-    );
-  }
+export function PowerCurveWidget({ data, year, mode }: Props) {
+  const [curveView, setCurveView] = useState<"chart" | "table">("chart");
 
-  // Index-based x-axis — same approach as the activity power tab chart
-  const chartData = POWER_CURVE_DURATIONS
-    .map((dur, index) => {
-      const point = data.find((p) => p.durationSeconds === dur);
-      return point ? { index, label: DURATION_LABELS[dur], medianPower: point.medianPower } : null;
-    })
-    .filter(Boolean) as { index: number; label: string; medianPower: number }[];
+  const hint = mode === "avg" ? STATISTICS_HINTS.powerCurveAvg : STATISTICS_HINTS.powerCurveBest;
+  const tooltipLabel = mode === "avg" ? "Median Power" : "Best Power";
+
+  const tableRows = POWER_CURVE_DURATIONS
+    .map((dur) => data.find((p) => p.durationSeconds === dur) ?? null)
+    .filter(Boolean) as AnnualPowerCurvePoint[];
+
+  const chartData: PowerCurveDataPoint[] = tableRows.map((p) => ({
+    durationSeconds: p.durationSeconds,
+    power: p.medianPower,
+  }));
 
   return (
-    <div className="rounded-lg border border-border bg-background-subtle p-4 h-64">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
-          <XAxis
-            dataKey="index"
-            type="number"
-            domain={[0, chartData.length - 1]}
-            ticks={chartData.map((_, i) => i)}
-            tickFormatter={(i) => chartData[i]?.label ?? ""}
-            tick={CHART_TICK_STYLE}
-            axisLine={false}
-            tickLine={false}
-            interval={0}
-          />
-          <YAxis
-            tickFormatter={(v) => `${v}w`}
-            tick={CHART_TICK_STYLE}
-            axisLine={false}
-            tickLine={false}
-            width={52}
-          />
-          <Tooltip
-            contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
-            labelFormatter={(i) => chartData[Number(i)]?.label ?? ""}
-            formatter={(value: number | undefined) => [`${value ?? "—"}w`, "Median Power"]}
-          />
-          <Line
-            type="monotone"
-            dataKey="medianPower"
-            stroke={CHART_COLORS.power}
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 4, fill: CHART_COLORS.power }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+    <div className="rounded-xl border border-border bg-background-subtle p-5">
+      {/* Header: title + hint left, toggle right */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-medium text-foreground-muted">Power Curve</h3>
+          <HelpIcon hint={hint} />
+        </div>
+        {data.length > 0 && (
+          <div className="flex rounded-md border border-border text-xs font-medium overflow-hidden">
+            <button
+              onClick={() => setCurveView("chart")}
+              className={`px-3 py-1 transition-colors ${curveView === "chart" ? "bg-power text-white" : "text-foreground-muted hover:text-foreground"}`}
+            >
+              Chart
+            </button>
+            <button
+              onClick={() => setCurveView("table")}
+              className={`px-3 py-1 transition-colors ${curveView === "table" ? "bg-power text-white" : "text-foreground-muted hover:text-foreground"}`}
+            >
+              Table
+            </button>
+          </div>
+        )}
+      </div>
+
+      {data.length === 0 ? (
+        <p className="text-sm text-foreground-muted text-center py-6">
+          No power curve data for {year}
+        </p>
+      ) : (
+        <div className="relative h-64">
+          {/* Table fills fixed height with scroll if needed */}
+          <div className={`h-full overflow-y-auto ${curveView === "chart" ? "invisible" : ""}`}>
+            <div className="overflow-hidden rounded-lg border border-border">
+              <table className="w-full">
+                <thead className="bg-background-subtle text-xs font-medium text-foreground-muted">
+                  <tr>
+                    <th className="px-4 py-2 text-left">Duration</th>
+                    <th className="px-4 py-2 text-right">Power</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border text-xs">
+                  {tableRows.map((point) => (
+                    <tr key={point.durationSeconds} className="hover:bg-background-subtle/50">
+                      <td className="px-4 py-2 font-mono">{DURATION_LABELS[point.durationSeconds]}</td>
+                      <td className="px-4 py-2 text-right font-mono text-power">{point.medianPower}w</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Chart overlays when active, fills exact same space */}
+          {curveView === "chart" && (
+            <div className="absolute inset-0 rounded-lg border border-border bg-background-subtle p-4">
+              <PowerCurveChart data={chartData} tooltipLabel={tooltipLabel} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

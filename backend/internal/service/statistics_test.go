@@ -19,8 +19,9 @@ type stubStatisticsRepo struct {
 	years    []int
 	yearsErr error
 
-	curve    []model.AnnualPowerCurvePoint
-	curveErr error
+	curve     []model.AnnualPowerCurvePoint
+	bestCurve []model.AnnualPowerCurvePoint
+	curveErr  error
 
 	records    []repository.ActivityPowerRecord
 	recordsErr error
@@ -31,6 +32,9 @@ func (s *stubStatisticsRepo) GetAvailablePowerYears(_ context.Context, _ uuid.UU
 }
 func (s *stubStatisticsRepo) GetAnnualMedianPowerCurve(_ context.Context, _ uuid.UUID, _ int, _ []int) ([]model.AnnualPowerCurvePoint, error) {
 	return s.curve, s.curveErr
+}
+func (s *stubStatisticsRepo) GetAnnualBestPowerCurve(_ context.Context, _ uuid.UUID, _ int, _ []int) ([]model.AnnualPowerCurvePoint, error) {
+	return s.bestCurve, s.curveErr
 }
 func (s *stubStatisticsRepo) GetAnnualPowerRecords(_ context.Context, _ uuid.UUID, _ int) ([]repository.ActivityPowerRecord, error) {
 	return s.records, s.recordsErr
@@ -612,5 +616,35 @@ func TestGetAnnualPowerStats_UnknownModeFallsBackToAvg(t *testing.T) {
 	}
 	if stats == nil {
 		t.Fatal("expected non-nil stats")
+	}
+}
+
+// ── Power curve mode routing ───────────────────────────────────────────────────
+
+func TestGetAnnualPowerStats_AvgModeUsesMedianPowerCurve(t *testing.T) {
+	medianCurve := []model.AnnualPowerCurvePoint{{DurationSeconds: 5, MedianPower: 300}}
+	bestCurve := []model.AnnualPowerCurvePoint{{DurationSeconds: 5, MedianPower: 500}}
+
+	svc := NewStatisticsService(&stubStatisticsRepo{curve: medianCurve, bestCurve: bestCurve})
+	stats, err := svc.GetAnnualPowerStats(context.Background(), uuid.New(), 2024, 0, nil, "avg")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(stats.PowerCurve) != 1 || stats.PowerCurve[0].MedianPower != 300 {
+		t.Errorf("avg mode: expected median curve (300w), got %+v", stats.PowerCurve)
+	}
+}
+
+func TestGetAnnualPowerStats_BestModeUsesBestPowerCurve(t *testing.T) {
+	medianCurve := []model.AnnualPowerCurvePoint{{DurationSeconds: 5, MedianPower: 300}}
+	bestCurve := []model.AnnualPowerCurvePoint{{DurationSeconds: 5, MedianPower: 500}}
+
+	svc := NewStatisticsService(&stubStatisticsRepo{curve: medianCurve, bestCurve: bestCurve})
+	stats, err := svc.GetAnnualPowerStats(context.Background(), uuid.New(), 2024, 0, nil, "best")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(stats.PowerCurve) != 1 || stats.PowerCurve[0].MedianPower != 500 {
+		t.Errorf("best mode: expected best curve (500w), got %+v", stats.PowerCurve)
 	}
 }
