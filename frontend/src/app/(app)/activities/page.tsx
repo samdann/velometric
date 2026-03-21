@@ -11,7 +11,6 @@ type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 type SortKey = "date" | "distance" | "duration" | "elevation";
 type SortOrder = "asc" | "desc";
 
-const SPORTS = ["Cycling", "Running", "Swimming"] as const;
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -141,6 +140,7 @@ export default function ActivitiesPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<PageSize>(10);
+  const [sports, setSports] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<Activity | null>(null);
@@ -213,6 +213,10 @@ export default function ActivitiesPage() {
     fetchActivities(page, limit, filters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, debouncedSearch, sport, dateFrom, dateTo, distMin, distMax, sortBy, sortOrder]);
+
+  useEffect(() => {
+    api.getSports().then(setSports).catch(() => {});
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
@@ -331,8 +335,8 @@ export default function ActivitiesPage() {
               className="rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary cursor-pointer transition-colors hover:border-border-hover"
             >
               <option value="">All sports</option>
-              {SPORTS.map((s) => (
-                <option key={s} value={s}>{s}</option>
+              {sports.map((s) => (
+                <option key={s} value={s}>{formatSport(s)}</option>
               ))}
             </select>
 

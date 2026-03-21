@@ -318,10 +318,20 @@ func (s *StravaService) processBatch(ctx context.Context, job *model.StravaSyncJ
 			summary.Name = *sa.Title
 		}
 
+		// If already linked, update directly without fuzzy matching.
+		if sa.LinkedActivityID != nil {
+			sport := mapStravaType(summary.Type)
+			if e := s.activityRepo.UpdateActivity(ctx, *sa.LinkedActivityID, summary.Name, sport, sa.ID); e == nil {
+				updated++
+				log.Printf("[strava-sync][job=%s] batch=%d re-synced strava_id=%d → local=%s (linked)", job.ID, batchNum, sa.StravaID, *sa.LinkedActivityID)
+			}
+			continue
+		}
+
 		match := s.findMatch(summary, localActivities)
 		if match != nil {
 			sport := mapStravaType(summary.Type)
-			if e := s.activityRepo.UpdateActivity(ctx, match.ID, summary.Name, sport); e == nil {
+			if e := s.activityRepo.UpdateActivity(ctx, match.ID, summary.Name, sport, sa.ID); e == nil {
 				updated++
 				log.Printf("[strava-sync][job=%s] batch=%d matched strava_id=%d → local=%s", job.ID, batchNum, sa.StravaID, match.ID)
 			}

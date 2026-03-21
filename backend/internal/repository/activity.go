@@ -89,14 +89,14 @@ func (r *ActivityRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.
 			avg_power, max_power, normalized_power, tss, intensity_factor, variability_index,
 			avg_hr, max_hr, avg_cadence, max_cadence, avg_speed, max_speed,
 			calories, avg_temperature, fit_file_url, device_name, location,
-			created_at, updated_at
+			strava_activity_id, created_at, updated_at
 		FROM activities WHERE id = $1
 	`, id).Scan(
 		&a.ID, &a.UserID, &a.Name, &a.Sport, &a.StartTime, &a.Duration, &a.Distance, &a.ElevationGain,
 		&a.AvgPower, &a.MaxPower, &a.NormalizedPower, &a.TSS, &a.IntensityFactor, &a.VariabilityIndex,
 		&a.AvgHR, &a.MaxHR, &a.AvgCadence, &a.MaxCadence, &a.AvgSpeed, &a.MaxSpeed,
 		&a.Calories, &a.AvgTemperature, &a.FitFileURL, &a.DeviceName, &a.Location,
-		&a.CreatedAt, &a.UpdatedAt,
+		&a.StravaActivityID, &a.CreatedAt, &a.UpdatedAt,
 	)
 	if err == pgx.ErrNoRows {
 		return nil, nil
@@ -114,7 +114,7 @@ func (r *ActivityRepository) ListByUserID(ctx context.Context, userID uuid.UUID)
 			avg_power, max_power, normalized_power, tss, intensity_factor, variability_index,
 			avg_hr, max_hr, avg_cadence, max_cadence, avg_speed, max_speed,
 			calories, avg_temperature, fit_file_url, device_name, location,
-			created_at, updated_at
+			strava_activity_id, created_at, updated_at
 		FROM activities
 		WHERE user_id = $1
 		ORDER BY start_time DESC
@@ -132,7 +132,7 @@ func (r *ActivityRepository) ListByUserID(ctx context.Context, userID uuid.UUID)
 			&a.AvgPower, &a.MaxPower, &a.NormalizedPower, &a.TSS, &a.IntensityFactor, &a.VariabilityIndex,
 			&a.AvgHR, &a.MaxHR, &a.AvgCadence, &a.MaxCadence, &a.AvgSpeed, &a.MaxSpeed,
 			&a.Calories, &a.AvgTemperature, &a.FitFileURL, &a.DeviceName, &a.Location,
-			&a.CreatedAt, &a.UpdatedAt,
+			&a.StravaActivityID, &a.CreatedAt, &a.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan activity: %w", err)
@@ -179,7 +179,7 @@ func (r *ActivityRepository) ListByUserIDPaginated(ctx context.Context, userID u
 			avg_power, max_power, normalized_power, tss, intensity_factor, variability_index,
 			avg_hr, max_hr, avg_cadence, max_cadence, avg_speed, max_speed,
 			calories, avg_temperature, fit_file_url, device_name, location,
-			created_at, updated_at,
+			strava_activity_id, created_at, updated_at,
 			COUNT(*) OVER () AS total_count
 		FROM activities
 		WHERE user_id = $1
@@ -213,7 +213,7 @@ func (r *ActivityRepository) ListByUserIDPaginated(ctx context.Context, userID u
 			&a.AvgPower, &a.MaxPower, &a.NormalizedPower, &a.TSS, &a.IntensityFactor, &a.VariabilityIndex,
 			&a.AvgHR, &a.MaxHR, &a.AvgCadence, &a.MaxCadence, &a.AvgSpeed, &a.MaxSpeed,
 			&a.Calories, &a.AvgTemperature, &a.FitFileURL, &a.DeviceName, &a.Location,
-			&a.CreatedAt, &a.UpdatedAt,
+			&a.StravaActivityID, &a.CreatedAt, &a.UpdatedAt,
 			&total,
 		)
 		if err != nil {
@@ -225,6 +225,27 @@ func (r *ActivityRepository) ListByUserIDPaginated(ctx context.Context, userID u
 		activities = make([]*model.Activity, 0)
 	}
 	return activities, total, nil
+}
+
+// GetDistinctSports returns the distinct sport values for a user, sorted alphabetically.
+func (r *ActivityRepository) GetDistinctSports(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT DISTINCT sport FROM activities WHERE user_id = $1 ORDER BY sport
+	`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query distinct sports: %w", err)
+	}
+	defer rows.Close()
+
+	sports := make([]string, 0)
+	for rows.Next() {
+		var s string
+		if err := rows.Scan(&s); err != nil {
+			return nil, fmt.Errorf("failed to scan sport: %w", err)
+		}
+		sports = append(sports, s)
+	}
+	return sports, nil
 }
 
 // InsertRecords bulk inserts activity records

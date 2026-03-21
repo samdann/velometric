@@ -178,6 +178,15 @@ class ApiClient {
     return response.json();
   }
 
+  async getSports(): Promise<string[]> {
+    const response = await fetch(`${this.baseUrl}/api/activities/sports`);
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to fetch sports");
+    }
+    return response.json();
+  }
+
   async getActivities(page = 1, limit = 25, filters: ActivityFilters = {}): Promise<PaginatedActivities> {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (filters.q) params.set("q", filters.q);

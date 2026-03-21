@@ -105,6 +105,27 @@ func (h *Handler) ListActivities(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) GetSports(w http.ResponseWriter, r *http.Request) {
+	if !h.HasDB() {
+		writeJSON(w, http.StatusOK, []string{})
+		return
+	}
+
+	userID, err := h.resolveUserID(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get user")
+		return
+	}
+
+	sports, err := h.activityService.GetDistinctSports(r.Context(), userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to fetch sports")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, sports)
+}
+
 func (h *Handler) GetActivity(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)

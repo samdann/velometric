@@ -27,6 +27,7 @@ type activityServicer interface {
 	ComputeHRZoneDistribution(ctx context.Context, activityID uuid.UUID, maxHR int, zones []model.HRZone) ([]model.HRZoneDistributionPoint, error)
 	ComputePowerZoneDistribution(ctx context.Context, activityID uuid.UUID, ftp int, zones []model.PowerZone) ([]model.PowerZoneDistributionPoint, error)
 	GetFeed(ctx context.Context, userID uuid.UUID, page, limit int) ([]model.FeedActivity, int, error)
+	GetDistinctSports(ctx context.Context, userID uuid.UUID) ([]string, error)
 }
 
 // userServicer is the subset of service.UserService used by the handler layer.

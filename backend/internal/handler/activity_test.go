@@ -87,6 +87,9 @@ func (f *fakeActivityService) ComputePowerZoneDistribution(_ context.Context, _ 
 func (f *fakeActivityService) GetFeed(_ context.Context, _ uuid.UUID, _, _ int) ([]model.FeedActivity, int, error) {
 	return f.feed, f.total, f.err
 }
+func (f *fakeActivityService) GetDistinctSports(_ context.Context, _ uuid.UUID) ([]string, error) {
+	return []string{}, f.err
+}
 
 // fakeUserService implements userServicer with configurable return values.
 type fakeUserService struct {

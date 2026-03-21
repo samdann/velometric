@@ -744,6 +744,11 @@ func (s *ActivityService) DeleteActivity(ctx context.Context, id uuid.UUID) erro
 	return s.repo.DeleteActivity(ctx, id)
 }
 
+// GetDistinctSports returns the distinct sport values recorded for a user.
+func (s *ActivityService) GetDistinctSports(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	return s.repo.GetDistinctSports(ctx, userID)
+}
+
 // GetFeed returns a paginated feed of activities with embedded mini-routes.
 func (s *ActivityService) GetFeed(ctx context.Context, userID uuid.UUID, page, limit int) ([]model.FeedActivity, int, error) {
 	return s.repo.GetFeedActivities(ctx, userID, page, limit)

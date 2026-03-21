@@ -73,6 +73,7 @@ func main() {
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/feed", h.GetFeed)
 		r.Get("/activities", h.ListActivities)
+		r.Get("/activities/sports", h.GetSports)
 		r.Post("/activities", h.CreateActivity)
 		r.Get("/activities/{id}", h.GetActivity)
 		r.Get("/activities/{id}/records", h.GetActivityRecords)

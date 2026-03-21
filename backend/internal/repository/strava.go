@@ -128,13 +128,16 @@ func (r *StravaRepository) SetJobProcessFailed(ctx context.Context, id uuid.UUID
 }
 
 // GetStravaActivitiesByJob retrieves all strava_activities tagged with the given job ID.
+// It also populates LinkedActivityID from any local activity already linked to each row.
 func (r *StravaRepository) GetStravaActivitiesByJob(ctx context.Context, jobID uuid.UUID) ([]*model.StravaActivity, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, user_id, strava_id, title, activity_type, start_time, distance,
-		       is_private, is_flagged, raw_json, synced_at
-		FROM strava_activities
-		WHERE job_id = $1
-		ORDER BY start_time DESC
+		SELECT sa.id, sa.user_id, sa.strava_id, sa.title, sa.activity_type, sa.start_time, sa.distance,
+		       sa.is_private, sa.is_flagged, sa.raw_json, sa.synced_at,
+		       a.id AS linked_activity_id
+		FROM strava_activities sa
+		LEFT JOIN activities a ON a.strava_activity_id = sa.id
+		WHERE sa.job_id = $1
+		ORDER BY sa.start_time DESC
 	`, jobID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query strava_activities by job: %w", err)
@@ -148,6 +151,7 @@ func (r *StravaRepository) GetStravaActivitiesByJob(ctx context.Context, jobID u
 		if err := rows.Scan(
 			&a.ID, &a.UserID, &a.StravaID, &a.Title, &a.ActivityType, &a.StartTime, &a.Distance,
 			&a.IsPrivate, &a.IsFlagged, &rawJSON, &a.SyncedAt,
+			&a.LinkedActivityID,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan strava_activity: %w", err)
 		}
@@ -199,7 +203,7 @@ func (r *ActivityRepository) FindByTimeRange(ctx context.Context, userID uuid.UU
 			avg_power, max_power, normalized_power, tss, intensity_factor, variability_index,
 			avg_hr, max_hr, avg_cadence, max_cadence, avg_speed, max_speed,
 			calories, avg_temperature, fit_file_url, device_name, location,
-			created_at, updated_at
+			strava_activity_id, created_at, updated_at
 		FROM activities
 		WHERE user_id = $1 AND start_time >= $2 AND start_time <= $3
 		ORDER BY start_time
@@ -217,7 +221,7 @@ func (r *ActivityRepository) FindByTimeRange(ctx context.Context, userID uuid.UU
 			&a.AvgPower, &a.MaxPower, &a.NormalizedPower, &a.TSS, &a.IntensityFactor, &a.VariabilityIndex,
 			&a.AvgHR, &a.MaxHR, &a.AvgCadence, &a.MaxCadence, &a.AvgSpeed, &a.MaxSpeed,
 			&a.Calories, &a.AvgTemperature, &a.FitFileURL, &a.DeviceName, &a.Location,
-			&a.CreatedAt, &a.UpdatedAt,
+			&a.StravaActivityID, &a.CreatedAt, &a.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan activity: %w", err)
@@ -227,13 +231,13 @@ func (r *ActivityRepository) FindByTimeRange(ctx context.Context, userID uuid.UU
 	return activities, nil
 }
 
-// UpdateActivity updates only specific fields of an activity
-func (r *ActivityRepository) UpdateActivity(ctx context.Context, id uuid.UUID, name, sport string) error {
+// UpdateActivity updates name, sport, and strava_activity_id on a local activity.
+func (r *ActivityRepository) UpdateActivity(ctx context.Context, id uuid.UUID, name, sport string, stravaActivityID uuid.UUID) error {
 	_, err := r.pool.Exec(ctx, `
 		UPDATE activities
-		SET name = $1, sport = $2, updated_at = NOW()
-		WHERE id = $3
-	`, name, sport, id)
+		SET name = $1, sport = $2, strava_activity_id = $3, updated_at = NOW()
+		WHERE id = $4
+	`, name, sport, stravaActivityID, id)
 	if err != nil {
 		return fmt.Errorf("failed to update activity: %w", err)
 	}

@@ -48,6 +48,9 @@ type Activity struct {
 	DeviceName *string `json:"deviceName,omitempty"`
 	Location   *string `json:"location,omitempty"`
 
+	// Strava link (set when this activity was matched to a cached Strava activity)
+	StravaActivityID *uuid.UUID `json:"stravaActivityId,omitempty"`
+
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
@@ -225,6 +228,9 @@ type StravaActivity struct {
 	IsFlagged    bool                   `json:"isFlagged"`
 	RawJSON      map[string]interface{} `json:"rawJson,omitempty"`
 	SyncedAt     time.Time              `json:"syncedAt"`
+
+	// LinkedActivityID is the local activity already matched to this Strava activity (if any).
+	LinkedActivityID *uuid.UUID `json:"linkedActivityId,omitempty"`
 }
 
 // StravaMatchCandidate represents a potential match between a Strava activity and a local one
