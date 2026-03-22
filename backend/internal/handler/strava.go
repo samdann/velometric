@@ -30,6 +30,7 @@ func NewStravaHandler(stravaService *service.StravaService, getUserID func(ctx c
 // @Produce json
 // @Param limit query int false "Max number of activities to process (0 = all)"
 // @Param local_only query bool false "If true, skip Strava fetch and only re-sync already-linked activities from cache"
+// @Param activity_type query string false "Filter by Strava sport type (e.g. Ride, Run, VirtualRide)"
 // @Success 202 {object} model.StravaSyncJob
 // @Router /api/strava/sync [post]
 func (h *StravaHandler) Sync(w http.ResponseWriter, r *http.Request) {
@@ -54,8 +55,9 @@ func (h *StravaHandler) Sync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	localOnly := r.URL.Query().Get("local_only") == "true"
+	activityType := r.URL.Query().Get("activity_type")
 
-	job, err := h.stravaService.StartSync(r.Context(), userID, offset, limit, localOnly)
+	job, err := h.stravaService.StartSync(r.Context(), userID, offset, limit, localOnly, activityType)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return

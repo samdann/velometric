@@ -218,6 +218,17 @@ paths:
             type: integer
             minimum: 1
           description: Max number of Strava activities to fetch. Omit or set to 0 for all. Ignored when `local_only=true`.
+        - name: activity_type
+          in: query
+          required: false
+          schema:
+            type: string
+            example: Ride
+          description: |
+            Filter by Strava sport type (e.g. `Ride`, `Run`, `VirtualRide`, `Walk`).
+            When set, only activities matching this type are processed. Case-insensitive.
+            In default mode, filtering is applied after fetching from Strava.
+            In `local_only` mode, filtering is applied to the cached linked activities.
       responses:
         "202":
           description: Job created and running in background
@@ -726,6 +737,9 @@ components:
         localOnly:
           type: boolean
           description: If true, the fetch phase was skipped and only cached linked activities were re-synced
+        activityType:
+          type: string
+          description: Strava sport type filter applied during this job (e.g. Ride, Run). Absent if no filter was set.
         limitCount:
           type: integer
           description: Max activities to fetch (0 = all)

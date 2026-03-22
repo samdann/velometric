@@ -70,7 +70,8 @@ func NewStravaService(cfg *config.Config, pool *pgxpool.Pool) *StravaService {
 // offset: number of activities to skip (Strava returns newest-first, so offset=0 = most recent).
 // limit: max activities to fetch (0 = all).
 // localOnly: if true, skip the Strava fetch phase and only re-sync already-linked activities from cache.
-func (s *StravaService) StartSync(ctx context.Context, userID uuid.UUID, offset, limit int, localOnly bool) (*model.StravaSyncJob, error) {
+// activityType: if non-empty, only process activities matching this Strava sport type (e.g. "Ride", "Run").
+func (s *StravaService) StartSync(ctx context.Context, userID uuid.UUID, offset, limit int, localOnly bool, activityType string) (*model.StravaSyncJob, error) {
 	if !localOnly && s.accessToken == "" {
 		return nil, fmt.Errorf("STRAVA_ACCESS_TOKEN not configured")
 	}
@@ -85,6 +86,9 @@ func (s *StravaService) StartSync(ctx context.Context, userID uuid.UUID, offset,
 		OffsetCount: offset,
 		StartedAt:   now,
 		CreatedAt:   now,
+	}
+	if activityType != "" {
+		job.ActivityType = &activityType
 	}
 
 	if err := s.stravaRepo.CreateJob(context.Background(), job); err != nil {
@@ -183,8 +187,18 @@ func (s *StravaService) runFetchPhase(ctx context.Context, job *model.StravaSync
 		return fmt.Errorf("%s", msg)
 	}
 
-	log.Printf("[strava-sync][job=%s] fetched %d activities from Strava (offset=%d limit=%d)",
-		job.ID, len(stravaActivities), job.OffsetCount, job.LimitCount)
+	if job.ActivityType != nil && *job.ActivityType != "" {
+		filtered := stravaActivities[:0]
+		for _, a := range stravaActivities {
+			if strings.EqualFold(a.Type, *job.ActivityType) {
+				filtered = append(filtered, a)
+			}
+		}
+		stravaActivities = filtered
+	}
+
+	log.Printf("[strava-sync][job=%s] fetched %d activities from Strava (offset=%d limit=%d activity_type=%v)",
+		job.ID, len(stravaActivities), job.OffsetCount, job.LimitCount, job.ActivityType)
 
 	for _, sa := range stravaActivities {
 		stravaModel := &model.StravaActivity{
@@ -236,6 +250,16 @@ func (s *StravaService) runProcessPhase(ctx context.Context, job *model.StravaSy
 		msg := fmt.Sprintf("failed to load cached strava activities: %v", err)
 		_ = s.stravaRepo.SetJobProcessFailed(ctx, job.ID, msg)
 		return fmt.Errorf("%s", msg)
+	}
+
+	if job.ActivityType != nil && *job.ActivityType != "" {
+		filtered := cached[:0]
+		for _, a := range cached {
+			if a.ActivityType != nil && strings.EqualFold(*a.ActivityType, *job.ActivityType) {
+				filtered = append(filtered, a)
+			}
+		}
+		cached = filtered
 	}
 
 	if len(cached) == 0 {
