@@ -34,7 +34,7 @@ type StravaActivitySummary struct {
 
 const (
 	stravaAPIBaseURL = "https://www.strava.com/api/v3"
-	matchTimeWindow  = 30   // seconds
+	matchTimeWindow  = 150  // seconds
 	matchDistancePct = 0.01 // 1%
 	rateLimitDelay   = 50 * time.Millisecond
 	processBatchSize = 50
@@ -510,6 +510,91 @@ func mapStravaType(stravaType string) string {
 		return v
 	}
 	return "Other"
+}
+
+const (
+	diagTimeWindow  = 600  // seconds — wide scan window for diagnostics (10 min)
+	diagDistancePct = 0.10 // 10% — wide distance tolerance for diagnostics
+)
+
+// GetUnlinkedDiagnostics returns every local activity that has no Strava link, together with
+// any Strava activities that are close enough in time and distance to be considered a potential
+// match, and the reasons each candidate was not auto-linked.
+func (s *StravaService) GetUnlinkedDiagnostics(ctx context.Context, userID uuid.UUID) ([]model.UnlinkedDiagnostic, error) {
+	unlinked, err := s.activityRepo.FindUnlinkedActivities(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("fetching unlinked activities: %w", err)
+	}
+
+	stravaActivities, err := s.stravaRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("fetching strava activities: %w", err)
+	}
+
+	results := make([]model.UnlinkedDiagnostic, 0, len(unlinked))
+
+	for _, la := range unlinked {
+		diag := model.UnlinkedDiagnostic{
+			LocalID:    la.ID,
+			Name:       la.Name,
+			Sport:      la.Sport,
+			StartTime:  la.StartTime,
+			Distance:   la.Distance,
+			Candidates: make([]model.DiagnosticCandidate, 0),
+		}
+
+		for _, sa := range stravaActivities {
+			timeDiff := math.Abs(la.StartTime.Sub(sa.StartTime).Seconds())
+			if timeDiff > float64(diagTimeWindow) {
+				continue
+			}
+
+			var saDist float64
+			if sa.Distance != nil {
+				saDist = *sa.Distance
+			}
+
+			var distDiff float64
+			if la.Distance > 0 {
+				distDiff = math.Abs(la.Distance-saDist) / la.Distance
+			}
+			if distDiff > diagDistancePct {
+				continue
+			}
+
+			var reasons []string
+			if timeDiff > float64(matchTimeWindow) {
+				reasons = append(reasons, fmt.Sprintf("time diff %.0fs exceeds %ds strict threshold", timeDiff, matchTimeWindow))
+			}
+			if la.Distance > 0 && distDiff > matchDistancePct {
+				reasons = append(reasons, fmt.Sprintf("distance diff %.1f%% exceeds %.0f%% strict threshold", distDiff*100, matchDistancePct*100))
+			}
+			if la.Distance == 0 {
+				reasons = append(reasons, "local activity has distance=0 (excluded from matching)")
+			}
+
+			diag.Candidates = append(diag.Candidates, model.DiagnosticCandidate{
+				StravaID:        sa.ID,
+				StravaNumericID: sa.StravaID,
+				Title:           sa.Title,
+				ActivityType:    sa.ActivityType,
+				StartTime:       sa.StartTime,
+				Distance:        sa.Distance,
+				TimeDiffSecs:    int64(timeDiff),
+				DistanceDiffPct: distDiff,
+				Reasons:         reasons,
+			})
+		}
+
+		if len(diag.Candidates) == 0 {
+			msg := fmt.Sprintf("no Strava activity within %ds and %.0f%% distance", diagTimeWindow, diagDistancePct*100)
+			diag.NoCandidateMsg = &msg
+		}
+
+		results = append(results, diag)
+	}
+
+	return results, nil
 }
 
 // HasToken checks if Strava token is configured

@@ -267,6 +267,41 @@ func (r *ActivityRepository) FindByTimeRange(ctx context.Context, userID uuid.UU
 	return activities, nil
 }
 
+// FindUnlinkedActivities returns all local activities for a user that have no Strava link.
+func (r *ActivityRepository) FindUnlinkedActivities(ctx context.Context, userID uuid.UUID) ([]*model.Activity, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, user_id, name, sport, start_time, duration, distance, elevation_gain,
+			avg_power, max_power, normalized_power, tss, intensity_factor, variability_index,
+			avg_hr, max_hr, avg_cadence, max_cadence, avg_speed, max_speed,
+			calories, avg_temperature, fit_file_url, device_name, location,
+			strava_activity_id, created_at, updated_at
+		FROM activities
+		WHERE user_id = $1 AND strava_activity_id IS NULL
+		ORDER BY start_time DESC
+	`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query unlinked activities: %w", err)
+	}
+	defer rows.Close()
+
+	var activities []*model.Activity
+	for rows.Next() {
+		var a model.Activity
+		err := rows.Scan(
+			&a.ID, &a.UserID, &a.Name, &a.Sport, &a.StartTime, &a.Duration, &a.Distance, &a.ElevationGain,
+			&a.AvgPower, &a.MaxPower, &a.NormalizedPower, &a.TSS, &a.IntensityFactor, &a.VariabilityIndex,
+			&a.AvgHR, &a.MaxHR, &a.AvgCadence, &a.MaxCadence, &a.AvgSpeed, &a.MaxSpeed,
+			&a.Calories, &a.AvgTemperature, &a.FitFileURL, &a.DeviceName, &a.Location,
+			&a.StravaActivityID, &a.CreatedAt, &a.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan activity: %w", err)
+		}
+		activities = append(activities, &a)
+	}
+	return activities, nil
+}
+
 // UpdateActivity updates name, sport, and strava_activity_id on a local activity.
 func (r *ActivityRepository) UpdateActivity(ctx context.Context, id uuid.UUID, name, sport string, stravaActivityID uuid.UUID) error {
 	_, err := r.pool.Exec(ctx, `

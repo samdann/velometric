@@ -241,6 +241,31 @@ type StravaMatchCandidate struct {
 	DistanceDiffPct float64
 }
 
+// DiagnosticCandidate is a Strava activity that is close enough to a local activity to be
+// considered a potential match, along with the reasons it was not auto-linked.
+type DiagnosticCandidate struct {
+	StravaID        uuid.UUID `json:"stravaActivityId"`
+	StravaNumericID int64     `json:"stravaNumericId"`
+	Title           *string   `json:"title,omitempty"`
+	ActivityType    *string   `json:"activityType,omitempty"`
+	StartTime       time.Time `json:"startTime"`
+	Distance        *float64  `json:"distance,omitempty"`
+	TimeDiffSecs    int64     `json:"timeDiffSecs"`
+	DistanceDiffPct float64   `json:"distanceDiffPct"`
+	Reasons         []string  `json:"reasons"`
+}
+
+// UnlinkedDiagnostic describes a local activity without a Strava link and its nearest candidates.
+type UnlinkedDiagnostic struct {
+	LocalID        uuid.UUID            `json:"localId"`
+	Name           string               `json:"name"`
+	Sport          string               `json:"sport"`
+	StartTime      time.Time            `json:"startTime"`
+	Distance       float64              `json:"distance"`
+	Candidates     []DiagnosticCandidate `json:"candidates"`
+	NoCandidateMsg *string              `json:"noCandidateMsg,omitempty"`
+}
+
 // StravaSyncJob status constants
 const (
 	JobStatusPending          = "PENDING"

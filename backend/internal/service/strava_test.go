@@ -97,24 +97,24 @@ func TestFindMatch_ExactMatch(t *testing.T) {
 }
 
 func TestFindMatch_WithinTimeWindow(t *testing.T) {
-	// 30 seconds apart is the exact boundary — must still match (condition is >).
+	// 150 seconds apart is the exact boundary — must still match (condition is >).
 	la := makeLocalActivity(baseTime, 30000)
-	sa := makeStravaSummary(baseTime.Add(30*time.Second), 30000)
+	sa := makeStravaSummary(baseTime.Add(150*time.Second), 30000)
 
 	got := svc.findMatch(sa, []*model.Activity{la})
 	if got == nil {
-		t.Error("30s diff should match (boundary is exclusive)")
+		t.Error("150s diff should match (boundary is exclusive)")
 	}
 }
 
 func TestFindMatch_OutsideTimeWindow(t *testing.T) {
-	// 31 seconds apart → no match.
+	// 151 seconds apart → no match.
 	la := makeLocalActivity(baseTime, 30000)
-	sa := makeStravaSummary(baseTime.Add(31*time.Second), 30000)
+	sa := makeStravaSummary(baseTime.Add(151*time.Second), 30000)
 
 	got := svc.findMatch(sa, []*model.Activity{la})
 	if got != nil {
-		t.Error("31s diff should not match")
+		t.Error("151s diff should not match")
 	}
 }
 
@@ -201,13 +201,13 @@ func TestFindCandidates_WithinCandidateWindow(t *testing.T) {
 }
 
 func TestFindCandidates_OutsideTimeWindow(t *testing.T) {
-	// 301 seconds → outside candidate window.
+	// 1501 seconds → outside candidate window (matchTimeWindow * 10 = 1500s).
 	la := makeLocalActivity(baseTime, 30000)
-	sa := makeStravaSummary(baseTime.Add(301*time.Second), 30000)
+	sa := makeStravaSummary(baseTime.Add(1501*time.Second), 30000)
 
 	got := svc.findCandidates(sa, []*model.Activity{la})
 	if len(got) != 0 {
-		t.Errorf("expected 0 candidates for 301s diff, got %d", len(got))
+		t.Errorf("expected 0 candidates for 1501s diff, got %d", len(got))
 	}
 }
 

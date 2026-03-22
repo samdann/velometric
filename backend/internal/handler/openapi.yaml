@@ -340,6 +340,32 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /api/strava/unlinked:
+    get:
+      summary: Diagnose unlinked local activities
+      description: |
+        Returns all local activities that have no Strava link (`strava_activity_id IS NULL`).
+        For each, lists any Strava activities within a wide matching window (10 min / 10% distance)
+        as candidates, along with the specific reasons they were not automatically linked
+        (e.g. time diff too large, distance diff too large).
+        Candidates with no reasons were matched but the link was not written — this should not happen.
+      tags: [Strava]
+      responses:
+        "200":
+          description: List of unlinked local activities with diagnostic candidates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UnlinkedDiagnostic"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /api/statistics/years:
     get:
       summary: Get years with power data
@@ -790,6 +816,64 @@ components:
         distanceDiffPct:
           type: number
           description: Relative distance difference as a fraction (0.05 = 5%)
+
+    DiagnosticCandidate:
+      type: object
+      properties:
+        stravaActivityId:
+          type: string
+          format: uuid
+          description: Internal UUID of the strava_activities row
+        stravaNumericId:
+          type: integer
+          format: int64
+          description: Strava's own numeric activity ID
+        title:
+          type: string
+        activityType:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        distance:
+          type: number
+          description: Distance in metres
+        timeDiffSecs:
+          type: integer
+          description: Absolute difference in start time between local and Strava activity (seconds)
+        distanceDiffPct:
+          type: number
+          description: Relative distance difference as a fraction (0.05 = 5%)
+        reasons:
+          type: array
+          items:
+            type: string
+          description: Human-readable reasons this candidate was not auto-linked. Empty means it should have matched.
+
+    UnlinkedDiagnostic:
+      type: object
+      properties:
+        localId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        sport:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        distance:
+          type: number
+          description: Distance in metres
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiagnosticCandidate"
+          description: Strava activities within 10 min and 10% distance of this local activity
+        noCandidateMsg:
+          type: string
+          description: Present when no Strava candidate was found within the wide search window
 
     AnnualPowerStats:
       type: object

@@ -159,6 +159,29 @@ func (h *StravaHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
 // RefreshToken exchanges a Strava refresh token for a new access token.
 // @Summary Refresh Strava access token
 // @Description Given a long-lived refresh token, returns a fresh access token.
+// UnlinkedDiagnostics returns all local activities without a Strava link and their nearest
+// Strava candidates, together with the reasons they were not automatically matched.
+// @Summary Diagnose unlinked local activities
+// @Tags strava
+// @Produce json
+// @Success 200 {array} model.UnlinkedDiagnostic
+// @Router /api/strava/unlinked [get]
+func (h *StravaHandler) UnlinkedDiagnostics(w http.ResponseWriter, r *http.Request) {
+	userID, err := h.getUserID(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "user not found"})
+		return
+	}
+
+	results, err := h.stravaService.GetUnlinkedDiagnostics(r.Context(), userID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, results)
+}
+
 // @Tags strava
 // @Produce json
 // @Param refresh_token query string true "Strava refresh token"
