@@ -1,0 +1,1 @@
+ALTER TABLE strava_sync_jobs ADD COLUMN local_only BOOLEAN NOT NULL DEFAULT FALSE;

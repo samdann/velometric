@@ -181,12 +181,27 @@ paths:
     post:
       summary: Start async Strava sync
       description: |
-        Creates a sync job and immediately returns it (HTTP 202). The job runs in the background
-        through two phases: FETCHING (pull from Strava API → cache to DB) and PROCESSING
-        (match cached activities against local FIT-uploaded activities).
+        Creates a sync job and immediately returns it (HTTP 202). The job runs in the background.
+
+        **Default mode** (`local_only=false`): two phases — FETCHING (pull from Strava API → cache
+        to DB) then PROCESSING (match cached activities against local FIT-uploaded activities).
+
+        **Local-only mode** (`local_only=true`): skips the Strava fetch entirely. Only re-syncs
+        activities that are already linked (i.e. `activities.strava_activity_id` is set). Useful
+        for applying name/sport updates from the cache without hitting the Strava API.
+
         Poll `GET /api/strava/jobs/{id}` to track progress.
       tags: [Strava]
       parameters:
+        - name: local_only
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: |
+            If true, skip the Strava fetch phase and only re-sync activities already linked to
+            a cached Strava activity. Does not require a Strava access token.
         - name: offset
           in: query
           required: false
@@ -195,14 +210,14 @@ paths:
             minimum: 0
           description: |
             Number of activities to skip from the start of Strava's result set (newest-first).
-            offset=0 starts from the most recent activity. offset=10 skips the 10 most recent.
+            Ignored when `local_only=true`.
         - name: limit
           in: query
           required: false
           schema:
             type: integer
             minimum: 1
-          description: Max number of Strava activities to fetch. Omit or set to 0 for all.
+          description: Max number of Strava activities to fetch. Omit or set to 0 for all. Ignored when `local_only=true`.
       responses:
         "202":
           description: Job created and running in background
@@ -708,6 +723,9 @@ components:
             - PROCESSING
             - DATA_PROCESSED
             - PROCESSING_FAILED
+        localOnly:
+          type: boolean
+          description: If true, the fetch phase was skipped and only cached linked activities were re-synced
         limitCount:
           type: integer
           description: Max activities to fetch (0 = all)

@@ -69,8 +69,9 @@ func NewStravaService(cfg *config.Config, pool *pgxpool.Pool) *StravaService {
 // Returns the job immediately (status PENDING).
 // offset: number of activities to skip (Strava returns newest-first, so offset=0 = most recent).
 // limit: max activities to fetch (0 = all).
-func (s *StravaService) StartSync(ctx context.Context, userID uuid.UUID, offset, limit int) (*model.StravaSyncJob, error) {
-	if s.accessToken == "" {
+// localOnly: if true, skip the Strava fetch phase and only re-sync already-linked activities from cache.
+func (s *StravaService) StartSync(ctx context.Context, userID uuid.UUID, offset, limit int, localOnly bool) (*model.StravaSyncJob, error) {
+	if !localOnly && s.accessToken == "" {
 		return nil, fmt.Errorf("STRAVA_ACCESS_TOKEN not configured")
 	}
 
@@ -79,6 +80,7 @@ func (s *StravaService) StartSync(ctx context.Context, userID uuid.UUID, offset,
 		ID:          uuid.New(),
 		UserID:      userID,
 		Status:      model.JobStatusPending,
+		LocalOnly:   localOnly,
 		LimitCount:  limit,
 		OffsetCount: offset,
 		StartedAt:   now,
@@ -154,8 +156,8 @@ func (s *StravaService) RetrySync(ctx context.Context, jobID uuid.UUID) (*model.
 func (s *StravaService) runJob(job *model.StravaSyncJob) {
 	ctx := context.Background()
 
-	// If retrying a processing failure, skip re-fetch.
-	if job.Status != model.JobStatusProcessingFailed {
+	// Skip fetch if: local-only mode, or retrying a processing failure.
+	if !job.LocalOnly && job.Status != model.JobStatusProcessingFailed {
 		if err := s.runFetchPhase(ctx, job); err != nil {
 			log.Printf("[strava-sync][job=%s] fetch phase failed: %v", job.ID, err)
 			return
@@ -223,7 +225,13 @@ func (s *StravaService) runProcessPhase(ctx context.Context, job *model.StravaSy
 	}
 	log.Printf("[strava-sync][job=%s] process phase started", job.ID)
 
-	cached, err := s.stravaRepo.GetStravaActivitiesByJob(ctx, job.ID)
+	var cached []*model.StravaActivity
+	var err error
+	if job.LocalOnly {
+		cached, err = s.stravaRepo.GetLinkedStravaActivitiesByUser(ctx, job.UserID)
+	} else {
+		cached, err = s.stravaRepo.GetStravaActivitiesByJob(ctx, job.ID)
+	}
 	if err != nil {
 		msg := fmt.Sprintf("failed to load cached strava activities: %v", err)
 		_ = s.stravaRepo.SetJobProcessFailed(ctx, job.ID, msg)
