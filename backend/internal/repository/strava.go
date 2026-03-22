@@ -81,6 +81,42 @@ func (r *StravaRepository) GetJob(ctx context.Context, id uuid.UUID) (*model.Str
 	return &j, nil
 }
 
+// GetAllStravaActivitiesByUser loads all strava_activities for a user, including
+// the linked local activity ID if one exists.
+func (r *StravaRepository) GetAllStravaActivitiesByUser(ctx context.Context, userID uuid.UUID) ([]*model.StravaActivity, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT sa.id, sa.user_id, sa.strava_id, sa.title, sa.activity_type, sa.start_time, sa.distance,
+		       sa.is_private, sa.is_flagged, sa.raw_json, sa.synced_at,
+		       a.id AS linked_activity_id
+		FROM strava_activities sa
+		LEFT JOIN activities a ON a.strava_activity_id = sa.id
+		WHERE sa.user_id = $1
+		ORDER BY sa.start_time DESC
+	`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query strava_activities: %w", err)
+	}
+	defer rows.Close()
+
+	var activities []*model.StravaActivity
+	for rows.Next() {
+		var a model.StravaActivity
+		var rawJSON []byte
+		if err := rows.Scan(
+			&a.ID, &a.UserID, &a.StravaID, &a.Title, &a.ActivityType, &a.StartTime, &a.Distance,
+			&a.IsPrivate, &a.IsFlagged, &rawJSON, &a.SyncedAt,
+			&a.LinkedActivityID,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan strava_activity: %w", err)
+		}
+		if rawJSON != nil {
+			json.Unmarshal(rawJSON, &a.RawJSON)
+		}
+		activities = append(activities, &a)
+	}
+	return activities, nil
+}
+
 // GetLinkedStravaActivitiesByUser loads all strava_activities for a user that are
 // already linked to a local activity (i.e. activities.strava_activity_id points to them).
 func (r *StravaRepository) GetLinkedStravaActivitiesByUser(ctx context.Context, userID uuid.UUID) ([]*model.StravaActivity, error) {

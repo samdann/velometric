@@ -33,13 +33,22 @@ type StravaActivitySummary struct {
 }
 
 const (
-	stravaAPIBaseURL = "https://www.strava.com/api/v3"
-	matchTimeWindow  = 150  // seconds
-	matchDistancePct = 0.01 // 1%
-	rateLimitDelay   = 50 * time.Millisecond
-	processBatchSize = 50
-	stravaPageSize   = 200
+	stravaAPIBaseURL  = "https://www.strava.com/api/v3"
+	matchTimeWindow   = 150  // seconds — default strict match window
+	swimTimeWindow    = 300  // seconds — Strava pool swims start ~2-5 min after FIT start
+	matchDistancePct  = 0.01 // 1%
+	rateLimitDelay    = 50 * time.Millisecond
+	processBatchSize  = 50
+	stravaPageSize    = 200
 )
+
+// timeWindowForType returns the strict time-match window (seconds) for a given Strava activity type.
+func timeWindowForType(stravaType string) float64 {
+	if strings.EqualFold(stravaType, "Swim") {
+		return swimTimeWindow
+	}
+	return matchTimeWindow
+}
 
 var ErrJobNotFound = errors.New("strava sync job not found")
 
@@ -242,7 +251,8 @@ func (s *StravaService) runProcessPhase(ctx context.Context, job *model.StravaSy
 	var cached []*model.StravaActivity
 	var err error
 	if job.LocalOnly {
-		cached, err = s.stravaRepo.GetLinkedStravaActivitiesByUser(ctx, job.UserID)
+		// local_only: skip Strava fetch, process all persisted strava_activities against local activities.
+		cached, err = s.stravaRepo.GetAllStravaActivitiesByUser(ctx, job.UserID)
 	} else {
 		cached, err = s.stravaRepo.GetStravaActivitiesByJob(ctx, job.ID)
 	}
@@ -444,9 +454,10 @@ func (s *StravaService) fetchActivities(ctx context.Context, offset, limit int) 
 
 // findMatch looks for a local activity matching the Strava activity
 func (s *StravaService) findMatch(sa StravaActivitySummary, localActivities []*model.Activity) *model.Activity {
+	window := timeWindowForType(sa.Type)
 	for _, la := range localActivities {
 		timeDiff := math.Abs(la.StartTime.Sub(sa.StartDate).Seconds())
-		if timeDiff > float64(matchTimeWindow) {
+		if timeDiff > window {
 			continue
 		}
 		if la.Distance == 0 {
@@ -464,10 +475,11 @@ func (s *StravaService) findMatch(sa StravaActivitySummary, localActivities []*m
 // findCandidates finds potential matches that are outside strict matching criteria
 func (s *StravaService) findCandidates(sa StravaActivitySummary, localActivities []*model.Activity) []model.StravaMatchCandidate {
 	var candidates []model.StravaMatchCandidate
+	window := timeWindowForType(sa.Type)
 
 	for _, la := range localActivities {
 		timeDiff := math.Abs(la.StartTime.Sub(sa.StartDate).Seconds())
-		if timeDiff > float64(matchTimeWindow*10) {
+		if timeDiff > window*10 {
 			continue
 		}
 		if la.Distance == 0 {
@@ -563,8 +575,14 @@ func (s *StravaService) GetUnlinkedDiagnostics(ctx context.Context, userID uuid.
 			}
 
 			var reasons []string
-			if timeDiff > float64(matchTimeWindow) {
-				reasons = append(reasons, fmt.Sprintf("time diff %.0fs exceeds %ds strict threshold", timeDiff, matchTimeWindow))
+			sportWindow := timeWindowForType(func() string {
+				if sa.ActivityType != nil {
+					return *sa.ActivityType
+				}
+				return ""
+			}())
+			if timeDiff > sportWindow {
+				reasons = append(reasons, fmt.Sprintf("time diff %.0fs exceeds %.0fs strict threshold", timeDiff, sportWindow))
 			}
 			if la.Distance > 0 && distDiff > matchDistancePct {
 				reasons = append(reasons, fmt.Sprintf("distance diff %.1f%% exceeds %.0f%% strict threshold", distDiff*100, matchDistancePct*100))

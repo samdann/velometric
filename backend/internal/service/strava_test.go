@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -34,6 +35,33 @@ func makeStravaSummary(startLocal time.Time, distanceM float64) StravaActivitySu
 		Type:      "Ride",
 		StartDate: startLocal,
 		Distance:  distanceM,
+	}
+}
+
+// ── processBatch ──────────────────────────────────────────────────────────────
+
+// TestProcessBatch_UnlinkedStravaActivity_IsProcessed verifies that a strava
+// activity with no existing local link (LinkedActivityID == nil) is still
+// evaluated for matching — i.e. it is NOT skipped.
+// When there is no matching local activity the batch must count it as "created".
+func TestProcessBatch_UnlinkedStravaActivity_IsProcessed(t *testing.T) {
+	job := &model.StravaSyncJob{}
+	dist := 30000.0
+	typ := "Ride"
+	sa := &model.StravaActivity{
+		StravaID:         1,
+		StartTime:        baseTime,
+		Distance:         &dist,
+		ActivityType:     &typ,
+		LinkedActivityID: nil, // explicitly unlinked
+	}
+
+	_, created, err := svc.processBatch(context.Background(), job, []*model.StravaActivity{sa}, []*model.Activity{}, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if created != 1 {
+		t.Errorf("expected created=1 (unlinked SA processed, no local match), got %d", created)
 	}
 }
 
@@ -156,6 +184,39 @@ func TestFindMatch_EmptyLocals(t *testing.T) {
 	got := svc.findMatch(sa, []*model.Activity{})
 	if got != nil {
 		t.Error("empty locals should return nil")
+	}
+}
+
+func TestFindMatch_Swim_WithinExtendedWindow(t *testing.T) {
+	// 300s diff with Swim type → should match (swim window is 300s, boundary exclusive).
+	la := makeLocalActivity(baseTime, 1800)
+	sa := StravaActivitySummary{ID: 1, Name: "Swim#01", Type: "Swim", StartDate: baseTime.Add(300 * time.Second), Distance: 1800}
+
+	got := svc.findMatch(sa, []*model.Activity{la})
+	if got == nil {
+		t.Error("300s diff for Swim should match (boundary is exclusive)")
+	}
+}
+
+func TestFindMatch_Swim_OutsideExtendedWindow(t *testing.T) {
+	// 301s diff with Swim type → no match.
+	la := makeLocalActivity(baseTime, 1800)
+	sa := StravaActivitySummary{ID: 1, Name: "Swim#01", Type: "Swim", StartDate: baseTime.Add(301 * time.Second), Distance: 1800}
+
+	got := svc.findMatch(sa, []*model.Activity{la})
+	if got != nil {
+		t.Error("301s diff for Swim should not match")
+	}
+}
+
+func TestFindMatch_NonSwim_StillUsesDefaultWindow(t *testing.T) {
+	// 151s diff with Ride type → no match (default window is 150s).
+	la := makeLocalActivity(baseTime, 30000)
+	sa := makeStravaSummary(baseTime.Add(151*time.Second), 30000)
+
+	got := svc.findMatch(sa, []*model.Activity{la})
+	if got != nil {
+		t.Error("151s diff for Ride should not match with default 150s window")
 	}
 }
 
