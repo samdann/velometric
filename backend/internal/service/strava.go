@@ -402,9 +402,6 @@ func (s *StravaService) fetchActivities(ctx context.Context, offset, limit int) 
 		}
 
 		page++
-		if page > 10 { // hard cap: 2000 activities
-			break
-		}
 	}
 
 	// Apply offset.
