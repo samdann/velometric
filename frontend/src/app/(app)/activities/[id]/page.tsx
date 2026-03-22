@@ -14,7 +14,7 @@ import { ElevationChart } from "@/components/activity/elevation-chart";
 import { SpeedChart } from "@/components/activity/speed-chart";
 import { HRCadenceChart } from "@/components/activity/hr-cadence-chart";
 import { api, Activity } from "@/lib/api";
-import { ActivityTab } from "@/types/activity";
+import { ActivityTab, SPORT_CONFIG, DEFAULT_SPORT_CONFIG } from "@/types/activity";
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -88,6 +88,13 @@ export default function ActivityDetailPage() {
     fetchActivity();
   }, [id]);
 
+  const sportConfig = activity ? (SPORT_CONFIG[activity.sport] ?? DEFAULT_SPORT_CONFIG) : DEFAULT_SPORT_CONFIG;
+
+  // If the current tab is not available for this sport, reset to overview.
+  if (activity && !sportConfig.tabs.includes(activeTab)) {
+    setActiveTab("overview");
+  }
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -113,7 +120,7 @@ export default function ActivityDetailPage() {
         description={formatDate(activity.startTime)}
       />
       <div className="py-2 px-6">
-        <ActivityTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <ActivityTabs activeTab={activeTab} onTabChange={setActiveTab} visibleTabs={sportConfig.tabs} />
 
         {/* Tab Content */}
         {activeTab === "overview" && (
@@ -199,9 +206,9 @@ export default function ActivityDetailPage() {
             />
           )}
         </div>
-          <ElevationChart activityId={id} />
-          <SpeedChart activityId={id} />
-          <HRCadenceChart activityId={id} />
+          {sportConfig.charts.includes("elevation") && <ElevationChart activityId={id} />}
+          {sportConfig.charts.includes("speed") && <SpeedChart activityId={id} />}
+          {sportConfig.charts.includes("hr-cadence") && <HRCadenceChart activityId={id} />}
         </div>
         )}
 
