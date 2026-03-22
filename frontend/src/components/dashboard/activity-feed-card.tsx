@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Map, Source, Layer } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { FeedActivity } from "@/lib/api";
@@ -121,7 +122,12 @@ export function ActivityFeedCard({ activity }: { activity: FeedActivity }) {
           className="mt-3 font-semibold text-foreground"
           style={{ fontFamily: "var(--font-instrument-sans)" }}
         >
-          {activity.name}
+          <Link
+            href={`/activities/${activity.id}`}
+            className="hover:text-primary transition-colors"
+          >
+            {activity.name}
+          </Link>
         </h3>
 
         {/* Row 4: quick stats */}
